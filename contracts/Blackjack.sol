@@ -25,7 +25,7 @@ contract Blackjack {
 
     function shuffleDeck() public {
         for (uint256 i = 0; i < deck.length; i++) {
-            uint256 j = pseudorandom(i, deck.length);
+            uint256 j = pseudoRandom(i, deck.length);
             (deck[i], deck[j]) = (deck[j], deck[i]);   
         }
     }
