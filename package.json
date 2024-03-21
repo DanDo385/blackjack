@@ -1,12 +1,11 @@
 {
     "name": "blackjack",
     "version": "0.1.0",
-    "private": true,
+    "private": false,
     "scripts": {
       "dev": "next dev",
       "build": "next build",
       "start": "next start",
-      "lint": "next lint",
       "test": "hardhat test",
       "compile": "hardhat compile",
       "deploy": "hardhat run scripts/deploy.js --network localhost",
@@ -22,8 +21,6 @@
       "@nomicfoundation/hardhat-ethers": "^3.0.5",
       "@nomicfoundation/hardhat-toolbox": "^5.0.0",
       "autoprefixer": "^10.0.1",
-      "eslint": "^8",
-      "eslint-config-next": "14.1.0",
       "ethers": "^6.11.1",
       "hardhat": "^2.22.1",
       "hardhat-deploy": "^0.12.2",

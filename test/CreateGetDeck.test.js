@@ -4,7 +4,7 @@ const { expect } = require("chai");
 
 describe("Blackjack", function () {
   it("Should deploy the contract, create a deck, and retrieve it", async function () {
-    const [owner] = await ethers.getSigners();
+    //const [owner] = await ethers.getSigners();
     const Blackjack = await ethers.getContractFactory("Blackjack");
     const blackjack = await Blackjack.deploy();
 
