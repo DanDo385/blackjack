@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT  
+// SPDX-License-Identifier: ISC  
 // Blackjack.sol
 pragma solidity 0.8.24;
 
@@ -22,6 +22,15 @@ contract Blackjack {
     function getDeck() public view returns (string[] memory) {
         return deck;
     }
+
+    function shuffleDeck() public {
+        for (uint256 i = 0; i < deck.length; i++) {
+            uint256 j = pseudorandom(i, deck.length);
+            (deck[i], deck[j]) = (deck[j], deck[i]);   
+        }
+    }
+
+    function pseudoRandom(uint256 seed, uint256 max) private view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, seed))) % max;
+    }
 }
-
-
