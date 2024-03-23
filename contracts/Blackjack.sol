@@ -1,51 +1,56 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: ISC
+pragma solidity 0.8.24;
 
 contract Blackjack {
-    string[] public deck;
-    // Include an array to keep track of random numbers for demonstration
-    uint256[] public randomNumbers;
+    string[][4] public decks;
+    uint public currentDeckIndex = 0;
 
-    // Modify the DeckShuffled event to include the random number
-    event DeckShuffled(uint256 indexed randomNumber);
+    event DeckCreated(uint deckIndex);
+    event DeckShuffled(uint deckIndex);
+    event CardDrawn(string card, uint deckIndex);
 
-    constructor() {
-        createDeck();
-    }
+    function createDecks() public {
+        for (uint deckIndex = 0; deckIndex < 4; deckIndex++) {
+            delete decks[deckIndex]; // Clear any existing deck at index
 
-    function createDeck() public {
-        delete deck; // Reset the deck
-        string[13] memory values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-        string[4] memory suits = ["C", "D", "H", "S"];
+            string[13] memory values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+            string[4] memory suits = ["C", "D", "H", "S"];
 
-        for (uint i = 0; i < suits.length; i++) {
-            for (uint j = 0; j < values.length; j++) {
-                deck.push(string(abi.encodePacked(values[j], suits[i])));
+            for (uint i = 0; i < suits.length; i++) {
+                for (uint j = 0; j < values.length; j++) {
+                    decks[deckIndex].push(string(abi.encodePacked(values[j], "-", suits[i])));
+                }
             }
+            emit DeckCreated(deckIndex);
         }
     }
 
-    function shuffleDeck() public {
-        uint256 deckSize = deck.length;
-        for (uint256 i = 0; i < deckSize; i++) {
-            uint256 j = pseudoRandom(i, deckSize);
-            // Store the random number for demonstration
-            randomNumbers.push(j);
-            (deck[i], deck[j]) = (deck[j], deck[i]);
-            emit DeckShuffled(j); // Emit the event with the random number
+    // Added method to retrieve an individual deck by index
+    function getDeck(uint deckIndex) public view returns (string[] memory) {
+        return decks[deckIndex];
+    }
+
+    function shuffleDeck(uint deckIndex) public {
+        for (uint256 i = 0; i < decks[deckIndex].length - 1; i++) {
+            uint256 j = i + pseudoRandom(i, decks[deckIndex].length - i);
+            string memory temp = decks[deckIndex][i];
+            decks[deckIndex][i] = decks[deckIndex][j];
+            decks[deckIndex][j] = temp;
         }
+        emit DeckShuffled(deckIndex);
     }
 
-    function pseudoRandom(uint256 nonce, uint256 max) private view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, nonce))) % max;
+    function pseudoRandom(uint256 seed, uint256 max) private view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, seed))) % max;
     }
 
-    function getDeck() public view returns (string[] memory) {
-        return deck;
-    }
+    function drawCard() public returns (string memory) {
+        require(decks[currentDeckIndex].length > 0, "Deck is empty");
+        // Corrected variable name from `drawnCard` to `cardDrawn`
+        string memory cardDrawn = decks[currentDeckIndex][decks[currentDeckIndex].length - 1];
+        decks[currentDeckIndex].pop(); // Remove the last card from the deck
 
-    // Added for demonstration to retrieve random numbers
-    function getRandomNumbers() public view returns (uint256[] memory) {
-        return randomNumbers;
+        emit CardDrawn(cardDrawn, currentDeckIndex); // Corrected event emission
+        return cardDrawn;
     }
 }
