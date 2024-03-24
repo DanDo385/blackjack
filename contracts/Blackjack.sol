@@ -68,5 +68,4 @@ contract Blackjack {
 
         return cardDealt;
     }
-
 }
