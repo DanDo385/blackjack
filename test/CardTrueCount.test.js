@@ -7,7 +7,8 @@ describe("Card count and remaining cards in each deck after drawing 12 cards", f
 
   beforeEach(async function () {
     const Blackjack = await ethers.getContractFactory("Blackjack");
-    [addr1] = await ethers.getSigners();
+    const signers = await ethers.getSigners();
+    addr1 = signers[1]; // Using the second signer for interactions
 
     blackjack = await Blackjack.deploy();
   });
@@ -16,22 +17,22 @@ describe("Card count and remaining cards in each deck after drawing 12 cards", f
     let drawnCards = [];
 
     for (let i = 0; i < 12; i++) {
-      await blackjack.connect(addr1).drawCard();
+      const tx = await blackjack.connect(addr1).drawCard();
+      const receipt = await tx.wait();
+      const cardDrawnEvent = receipt.events?.filter(e => e.event === 'CardDrawn');
+      if (cardDrawnEvent && cardDrawnEvent.length > 0) {
+        const cardDrawn = cardDrawnEvent[0].args.card;
+        drawnCards.push(cardDrawn);
+        console.log(`Card ${i + 1} drawn: ${cardDrawn}`);
+      } else {
+        console.error('No CardDrawn event found for this transaction.');
+      }
     }
-
-    // Fetch the logs for drawn cards
-    const filter = blackjack.filters.CardDrawn(null, null);
-    const logs = await blackjack.queryFilter(filter, "latest");
-    logs.forEach((log, index) => {
-      drawnCards.push(log.args.card);
-      console.log(`Card ${index + 1} drawn: ${log.args.card}`);
-    });
 
     console.log("First 12 drawn cards:", drawnCards.join(", "));
 
     const cardCount = await blackjack.cardCount();
     const trueCount = await blackjack.trueCount();
-    
     console.log("Card Count after 12th draw:", cardCount.toString());
     console.log("True Count after 12th draw:", trueCount.toString());
 
