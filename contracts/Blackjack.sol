@@ -4,10 +4,6 @@ pragma solidity ^0.8.24;
 contract Blackjack {
     string[][4] public decks;
     uint public currentDeckIndex = 0;
-    int public cardCount = 0;
-    int public trueCount = 0;
-    uint public cardsDrawn = 0;
-    uint constant totalCards = 52 * 4; // Total cards in 4 decks
 
     event DeckCreated(uint deckIndex);
     event DeckShuffled(uint deckIndex);
@@ -59,32 +55,11 @@ contract Blackjack {
     }
 
     function drawCard() public returns (string memory) {
-        require(!listenShuffle(), "Shuffling... Please wait.");
+        require(decks[currentDeckIndex].length > 0, "Deck is empty");
         string memory cardDrawn = decks[currentDeckIndex][decks[currentDeckIndex].length - 1];
         decks[currentDeckIndex].pop();
         emit CardDrawn(cardDrawn, currentDeckIndex);
         currentDeckIndex = (currentDeckIndex + 1) % 4;
         return cardDrawn;
-    }
-
-    function calcCounts(string memory cardDrawn) public {
-        if (bytes(cardDrawn)[0] == '2' || bytes(cardDrawn)[0] == '3' || bytes(cardDrawn)[0] == '4' || bytes(cardDrawn)[0] == '5' || bytes(cardDrawn)[0] == '6') {
-            cardCount += 1;
-        } else if (bytes(cardDrawn)[0] == '1' || bytes(cardDrawn)[0] == 'J' || bytes(cardDrawn)[0] == 'Q' || bytes(cardDrawn)[0] == 'K' || bytes(cardDrawn)[0] == 'A') {
-            cardCount -= 1;
-        }
-        cardsDrawn++;
-        uint decksRemaining = totalCards > cardsDrawn ? (totalCards - cardsDrawn) / 52 : 0;
-        trueCount = decksRemaining > 0 ? int(cardCount) / int(decksRemaining) : int(cardCount);
-        if (listenShuffle()) {
-            shuffleDecks();
-            cardCount = 0;
-            cardsDrawn = 0;
-            trueCount = 0;
-        }
-    }
-
-    function listenShuffle() public view returns (bool) {
-        return cardsDrawn >= (totalCards * 75) / 100;
     }
 }
