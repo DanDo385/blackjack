@@ -16,16 +16,21 @@ describe("Card count and remaining cards in each deck after drawing 12 cards", f
   it("Draw 12 cards and check counts and remaining cards", async function () {
     let drawnCards = [];
 
+    // Draw 12 cards and log them
     for (let i = 0; i < 12; i++) {
       const tx = await blackjack.connect(addr1).drawCard();
-      const receipt = await tx.wait();
-      const cardDrawnEvent = receipt.events?.filter(e => e.event === 'CardDrawn');
-      if (cardDrawnEvent && cardDrawnEvent.length > 0) {
-        const cardDrawn = cardDrawnEvent[0].args.card;
-        drawnCards.push(cardDrawn);
+      const receipt = await tx.wait(); // Wait for the transaction to be mined
+
+      // Attempt to capture the CardDrawn event directly
+      const events = receipt.events || [];
+      const cardDrawnEvent = events.find(e => e.event === 'CardDrawn');
+      
+      if (cardDrawnEvent) {
+        const cardDrawn = cardDrawnEvent.args.card;
         console.log(`Card ${i + 1} drawn: ${cardDrawn}`);
+        drawnCards.push(cardDrawn);
       } else {
-        console.error('No CardDrawn event found for this transaction.');
+        console.log(`Card ${i + 1} drawn: Event not found`);
       }
     }
 
