@@ -7,7 +7,7 @@ contract Blackjack {
 
     event DeckCreated(uint deckIndex);
     event DeckShuffled(uint deckIndex);
-    event CardDrawn(string card, uint deckIndex);
+    event CardDealt(string card, uint deckIndex);
 
     constructor() {
         createDecks();
@@ -34,6 +34,7 @@ contract Blackjack {
         }
     }
 
+    // Retrieve the current state of a specific deck
     function getDeck(uint deckIndex) public view returns (string[] memory) {
         require(deckIndex < 4, "Invalid deck index");
         return decks[deckIndex];
@@ -43,9 +44,9 @@ contract Blackjack {
         require(deckIndex < 4, "Invalid deck index");
         for (uint256 i = 0; i < decks[deckIndex].length - 1; i++) {
             uint256 j = i + pseudoRandom(i, decks[deckIndex].length - i);
-            string memory temp = decks[deckIndex][i];
-            decks[deckIndex][i] = decks[deckIndex][j];
-            decks[deckIndex][j] = temp;
+            string memory temp = decks[deckIndex][j];
+            decks[deckIndex][j] = decks[deckIndex][i];
+            decks[deckIndex][i] = temp;
         }
         emit DeckShuffled(deckIndex);
     }
@@ -54,17 +55,14 @@ contract Blackjack {
         return uint256(keccak256(abi.encodePacked(block.timestamp, seed))) % max;
     }
 
-    function drawCard() public returns (string memory) {
-    // Directly pop the last card of the current deck.
-    string memory cardDrawn = decks[currentDeckIndex][decks[currentDeckIndex].length - 1];
-    decks[currentDeckIndex].pop();
-
-    // Emit an event with the drawn card and the current deck's index.
-    emit CardDrawn(cardDrawn, currentDeckIndex);
-
-    // Move to the next deck in the sequence.
-    currentDeckIndex = (currentDeckIndex + 1) % 4;
-
-    return cardDrawn;
-}
+    function dealCard() public returns (string memory) {
+        require(decks[currentDeckIndex].length > 0, "Deck is empty");
+        string memory cardDealt = decks[currentDeckIndex][decks[currentDeckIndex].length - 1];
+        decks[currentDeckIndex].pop();
+        
+        emit CardDealt(cardDealt, currentDeckIndex);
+        
+        currentDeckIndex = (currentDeckIndex + 1) % 4;
+        return cardDealt;
+    }
 }
