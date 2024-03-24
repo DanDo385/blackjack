@@ -55,11 +55,16 @@ contract Blackjack {
     }
 
     function drawCard() public returns (string memory) {
-        require(decks[currentDeckIndex].length > 0, "Deck is empty");
-        string memory cardDrawn = decks[currentDeckIndex][decks[currentDeckIndex].length - 1];
-        decks[currentDeckIndex].pop();
-        emit CardDrawn(cardDrawn, currentDeckIndex);
-        currentDeckIndex = (currentDeckIndex + 1) % 4;
-        return cardDrawn;
-    }
+    // Directly pop the last card of the current deck.
+    string memory cardDrawn = decks[currentDeckIndex][decks[currentDeckIndex].length - 1];
+    decks[currentDeckIndex].pop();
+
+    // Emit an event with the drawn card and the current deck's index.
+    emit CardDrawn(cardDrawn, currentDeckIndex);
+
+    // Move to the next deck in the sequence.
+    currentDeckIndex = (currentDeckIndex + 1) % 4;
+
+    return cardDrawn;
+}
 }
