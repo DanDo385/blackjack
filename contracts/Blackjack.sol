@@ -56,13 +56,17 @@ contract Blackjack {
     }
 
     function dealCard() public returns (string memory) {
-        require(decks[currentDeckIndex].length > 0, "Deck is empty");
+        // Directly pop the last card from the current deck.
         string memory cardDealt = decks[currentDeckIndex][decks[currentDeckIndex].length - 1];
         decks[currentDeckIndex].pop();
-        
+
+        // Emit the CardDealt event with the dealt card and current deck index.
         emit CardDealt(cardDealt, currentDeckIndex);
-        
+
+        // Shift to the next deck in the cycle.
         currentDeckIndex = (currentDeckIndex + 1) % 4;
+
         return cardDealt;
     }
+
 }
