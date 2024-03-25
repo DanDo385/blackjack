@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: ISC
-// BlackjackCards.sol
-pragma solidity ^0.8.24;
+// contracts/BlackjackCards.sol
+pragma solidity 0.8.24;
 
 contract BlackjackCards {
     string[] public deck; // Single deck of cards
