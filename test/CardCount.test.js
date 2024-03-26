@@ -6,17 +6,12 @@ describe("Blackjack", function () {
   let owner;
 
   beforeEach(async function () {
-    // Get the ContractFactory and Signers here.
     const Blackjack = await ethers.getContractFactory("Blackjack");
     [owner] = await ethers.getSigners();
-
-    // Deploy a new contract before each test.
     blackjack = await Blackjack.deploy();
-
-  });
+    });
 
   it("Should deal 20 cards and update cardCount correctly", async function () {
-    // Draw 20 cards.
     for (let i = 0; i < 20; i++) {
       await blackjack.connect(owner).drawCard();
     }
