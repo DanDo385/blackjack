@@ -1,49 +1,87 @@
 // SPDX-License-Identifier: ISC
-// contracts/BlackjackCards.sol
 pragma solidity 0.8.24;
 
-contract BlackjackCards {
-    string[] public deck; // Single deck of cards
+contract Blackjack {
+    string[][4] public decks; // Array of 4 decks
+    uint256 public currentDeckIndex = 0; // Index to track the current deck in use
+    int256 public cardCount = 0; // Initialize card counting variable
+    int256 public trueCount = 0; // Initialize true count variable
+    uint256 public cardsDealt = 0; // Initialize cards dealt counter
 
-    event DeckShuffled();
-    event CardDealt(string card);
+    event DeckShuffled(uint256 deckIndex);
+    event CardDealt(string card, uint256 deckIndex, int256 cardCount, int256 trueCount);
+    event TrueCountUpdated(int256 trueCount);
 
     constructor() {
-        createDeck();
-        shuffleDeck();
+        for (uint256 i = 0; i < decks.length; i++) {
+            createDeck(i);
+            shuffleDeck(i);
+        }
     }
 
-    function createDeck() internal {
-        delete deck; // Clear existing deck
+    function createDeck(uint256 deckIndex) internal {
+        delete decks[deckIndex]; // Clear the deck at index
         string[13] memory values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
         string[4] memory suits = ["C", "D", "H", "S"];
         for (uint i = 0; i < suits.length; i++) {
             for (uint j = 0; j < values.length; j++) {
-                deck.push(string(abi.encodePacked(values[j], "-", suits[i])));
+                decks[deckIndex].push(string(abi.encodePacked(values[j], "-", suits[i])));
             }
         }
     }
 
-    function shuffleDeck() public {
-        for (uint256 i = 0; i < deck.length - 1; i++) {
-            uint256 j = i + pseudoRandom(i, deck.length - i);
-            // Use a temporary variable for the swap
-            string memory temp = deck[i];
-            deck[i] = deck[j];
-            deck[j] = temp;
+    function shuffleDeck(uint256 deckIndex) public {
+        for (uint256 i = 0; i < decks[deckIndex].length - 1; i++) {
+            uint256 j = i + pseudoRandom(i, decks[deckIndex].length - i, deckIndex);
+            (decks[deckIndex][i], decks[deckIndex][j]) = (decks[deckIndex][j], decks[deckIndex][i]);
         }
-        emit DeckShuffled();
+        cardCount = 0; // Reset card count when deck is shuffled
+        emit DeckShuffled(deckIndex);
     }
 
-    function pseudoRandom(uint256 seed, uint256 max) private view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, seed))) % max;
+    function pseudoRandom(uint256 seed, uint256 max, uint256 deckIndex) private view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, seed, deckIndex))) % max;
     }
 
     function drawCard() public returns (string memory) {
-        uint lastIndex = deck.length - 1;
-        string memory drawnCard = deck[lastIndex];
-        deck.pop();
-        emit CardDealt(drawnCard);
+        uint256 deckIndex = currentDeckIndex % decks.length;
+        uint lastIndex = decks[deckIndex].length - 1;
+        string memory drawnCard = decks[deckIndex][lastIndex];
+        decks[deckIndex].pop();
+        cardsDealt++;
+
+        // Update card count based on the card value
+        updateCardCount(drawnCard);
+
+        // Update true count
+        updateTrueCount();
+
+        emit CardDealt(drawnCard, deckIndex, cardCount, trueCount);
+
+        // Rotate to the next deck if needed
+        if (lastIndex == 0) {
+            currentDeckIndex++;
+            if (decks[deckIndex].length == 0) { // Recreate and reshuffle if deck is empty
+                createDeck(deckIndex);
+                shuffleDeck(deckIndex);
+            }
+        }
+
         return drawnCard;
+    }
+
+    function updateCardCount(string memory card) internal {
+        bytes memory value = bytes(card);
+        if (value[0] == '2' || value[0] == '3' || value[0] == '4' || value[0] == '5' || value[0] == '6') {
+            cardCount += 1;
+        } else if (value[0] == '1' || value[0] == 'J' || value[0] == 'Q' || value[0] == 'K' || value[0] == 'A') {
+            cardCount -= 1;
+        }
+    }
+
+    function updateTrueCount() internal {
+        uint256 decksRemaining = ((208 - cardsDealt) + 51) / 52; // +51 to ensure rounding up
+        if(decksRemaining == 0) decksRemaining = 1; // Prevent division by zero
+        trueCount = cardCount / int256(decksRemaining);
     }
 }
