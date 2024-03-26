@@ -33,7 +33,9 @@ contract Blackjack {
     function shuffleDeck(uint256 deckIndex) public {
         for (uint256 i = 0; i < decks[deckIndex].length - 1; i++) {
             uint256 j = i + pseudoRandom(i, decks[deckIndex].length - i, deckIndex);
-            (decks[deckIndex][i], decks[deckIndex][j]) = (decks[deckIndex][j], decks[deckIndex][i]);
+            string memory temp = decks[deckIndex][i];
+            decks[deckIndex][i] = decks[deckIndex][j];
+            decks[deckIndex][j] = temp;
         }
         cardCount = 0; // Reset card count when deck is shuffled
         emit DeckShuffled(deckIndex);
