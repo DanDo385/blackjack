@@ -2,17 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Poppins font with the weight of 500 */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap');
 
-html, body {
+html,
+body {
   font-family: 'Poppins', sans-serif;
-  font-weight: 500; /* Ensuring font-weight is 500 */
-  background-color: #1E293B; /* Slate 900 */
-  color: #10B981; /* Green 400 */
+  font-weight: 500;
+  background-color: #1e293b; 
+  color: #1e293b; 
 }
 
-/* Ensure all text inherits the color and font-weight */
-*, *::before, *::after {
-  font-weight: inherit;
-  color: inherit;
+/* Customize button styles globally if needed */
+button {
+  color: #1e293b; /* text-slate-900 */
+  background-color: #f97316; /* bg-orange-500 */
 }

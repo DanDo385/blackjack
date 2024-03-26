@@ -51,16 +51,9 @@ contract Blackjack {
         string memory drawnCard = decks[deckIndex][lastIndex];
         decks[deckIndex].pop();
         cardsDealt++;
-
-        // Update card count based on the card value
         updateCardCount(drawnCard);
-
-        // Update true count
         updateTrueCount();
-
         emit CardDealt(drawnCard, deckIndex, cardCount, trueCount);
-
-        // Rotate to the next deck if needed
         if (lastIndex == 0) {
             currentDeckIndex++;
             if (decks[deckIndex].length == 0) { // Recreate and reshuffle if deck is empty
@@ -68,7 +61,6 @@ contract Blackjack {
                 shuffleDeck(deckIndex);
             }
         }
-
         return drawnCard;
     }
 
