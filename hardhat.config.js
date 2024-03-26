@@ -1,3 +1,4 @@
+// hardhat.config.js
 require("@nomiclabs/hardhat-ethers");
 
 const ALCHEMY_API_KEY = "6o-fd07qH90Dzpteuy94IMNZTPvaF-1Q";
