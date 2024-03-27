@@ -6,8 +6,10 @@ contract Blackjack {
     string[] private playerHand;
     string[] private dealerHand;
     int private cardCount;
+    uint private constant INITIAL_DECK_SIZE = 52; // Standard deck size
 
     event CardDealt(string card);
+    event DeckShuffled();
 
     constructor() {
         initializeDeck();
@@ -26,13 +28,14 @@ contract Blackjack {
         }
     }
 
-    function shuffleDeck() internal {
+    function shuffleDeck() public {
         for(uint256 i = 0; i < deck.length; i++) {
             uint256 n = i + uint256(keccak256(abi.encodePacked(block.timestamp, i))) % (deck.length - i);
             string memory temp = deck[n];
             deck[n] = deck[i];
             deck[i] = temp;
         }
+        emit DeckShuffled();
     }
 
     function dealHands() internal {
@@ -44,6 +47,9 @@ contract Blackjack {
 
     function dealCard() internal returns (string memory) {
         require(deck.length > 0, "Deck is empty");
+        if (deck.length <= INITIAL_DECK_SIZE / 4) {
+            shuffleDeck();
+        }
         string memory card = deck[deck.length - 1];
         deck.pop();
         updateCardCount(card);
@@ -52,27 +58,21 @@ contract Blackjack {
 
     function updateCardCount(string memory card) internal {
         bytes memory cardBytes = bytes(card);
-        // Increase card count for 2, 3, 4, 5, 6
         if(cardBytes[0] >= '2' && cardBytes[0] <= '6') {
             cardCount += 1;
-        }
-        // Decrease card count for 10, J, Q, K, A
-        else if(cardBytes[0] == '1' || (cardBytes[0] == 'J' || cardBytes[0] == 'Q' || cardBytes[0] == 'K' || cardBytes[0] == 'A')) {
+        } else if(cardBytes[0] == '1' || (cardBytes[0] == 'J' || cardBytes[0] == 'Q' || cardBytes[0] == 'K' || cardBytes[0] == 'A')) {
             cardCount -= 1;
         }
     }
 
-    // Retrieve player's hand
     function getPlayerHand() public view returns (string[] memory) {
         return playerHand;
     }
 
-    // Retrieve dealer's hand
     function getDealerHand() public view returns (string[] memory) {
         return dealerHand;
     }
 
-    // Get the current card count
     function getCardCount() public view returns (int) {
         return cardCount;
     }

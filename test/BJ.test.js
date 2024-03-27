@@ -1,5 +1,4 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
 
 describe("Blackjack Contract", function () {
     let blackjack;
@@ -20,4 +19,3 @@ describe("Blackjack Contract", function () {
         expect(dealerHand.length).to.equal(2);
     });
 });
-
