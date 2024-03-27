@@ -10,7 +10,7 @@ module.exports = {
     },
     sepolia: {
       url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`, // Use the Infura URL for Sepolia
-      accounts: [`0x${PRIVATE_KEY}`] // Use your private key from the environment variable
+      accounts: [`${PRIVATE_KEY}`] // Use your private key from the environment variable
     },
   },
 };

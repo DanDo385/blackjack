@@ -12,6 +12,7 @@
         "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet"
     },
     "dependencies": {
+        "dotenv": "^16.4.5",
         "mocha": "^10.3.0",
         "next": "14.1.0",
         "react": "^18",
