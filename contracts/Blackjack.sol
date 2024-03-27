@@ -1,47 +1,79 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.24;
 
 contract Blackjack {
     string[] private deck;
+    string[] private playerHand;
+    string[] private dealerHand;
+    int private cardCount;
 
     event CardDealt(string card);
 
     constructor() {
         initializeDeck();
         shuffleDeck();
+        dealHands(); // Deal hands upon contract deployment
     }
 
     function initializeDeck() internal {
-        delete deck; // Clear the current deck
+        delete deck; // Clear any existing deck
         string[13] memory ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
         string[4] memory suits = ["C", "D", "H", "S"];
-
         for(uint i = 0; i < suits.length; i++) {
             for(uint j = 0; j < ranks.length; j++) {
-                deck.push(string(abi.encodePacked(ranks[j], "-",suits[i])));
+                deck.push(string(abi.encodePacked(ranks[j], "-", suits[i])));
             }
         }
     }
 
     function shuffleDeck() internal {
-        for (uint256 i = 0; i < deck.length; i++) {
-            uint256 n = i + uint256(keccak256(abi.encodePacked(block.timestamp))) % (deck.length - i);
-            string memory temp = deck[i];
-            deck[i] = deck[n];
-            deck[n] = temp;
+        for(uint256 i = 0; i < deck.length; i++) {
+            uint256 n = i + uint256(keccak256(abi.encodePacked(block.timestamp, i))) % (deck.length - i);
+            string memory temp = deck[n];
+            deck[n] = deck[i];
+            deck[i] = temp;
         }
     }
 
-    // View function to see the top card without altering the deck
-    function dealCard() public view returns (string memory) {
-        require(deck.length > 0, "Deck is empty");
-        return deck[deck.length - 1];
+    function dealHands() internal {
+        for(int i = 0; i < 2; i++) {
+            playerHand.push(dealCard());
+            dealerHand.push(dealCard());
+        }
     }
 
-    // Function to remove the top card from the deck
-    function removeTopCard() public {
+    function dealCard() internal returns (string memory) {
         require(deck.length > 0, "Deck is empty");
+        string memory card = deck[deck.length - 1];
         deck.pop();
-        emit CardDealt(deck[deck.length - 1]); // Emit the next top card after removal
+        updateCardCount(card);
+        return card;
+    }
+
+    function updateCardCount(string memory card) internal {
+        bytes memory cardBytes = bytes(card);
+        // Increase card count for 2, 3, 4, 5, 6
+        if(cardBytes[0] >= '2' && cardBytes[0] <= '6') {
+            cardCount += 1;
+        }
+        // Decrease card count for 10, J, Q, K, A
+        else if(cardBytes[0] == '1' || (cardBytes[0] == 'J' || cardBytes[0] == 'Q' || cardBytes[0] == 'K' || cardBytes[0] == 'A')) {
+            cardCount -= 1;
+        }
+    }
+
+    // Retrieve player's hand
+    function getPlayerHand() public view returns (string[] memory) {
+        return playerHand;
+    }
+
+    // Retrieve dealer's hand
+    function getDealerHand() public view returns (string[] memory) {
+        return dealerHand;
+    }
+
+    // Get the current card count
+    function getCardCount() public view returns (int) {
+        return cardCount;
     }
 }
