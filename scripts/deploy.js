@@ -1,13 +1,14 @@
 // scripts/deploy.js
-const hre = require("hardhat");
+const { ethers } = require("hardhat");
+require("dotenv").config(); // Load environment variables
 
 async function main() {
-  const BlackjackGame = await hre.ethers.getContractFactory("BlackjackGame");
-  const blackjackGame = await BlackjackGame.deploy();
+  const Blackjack = await ethers.getContractFactory("Blackjack");
 
-  await blackjackGame.deployed();
+  // Start deployment, returning a promise that resolves to a contract object
+  const blackjackContract = await Blackjack.deploy();
 
-  console.log("BlackjackGame deployed to:", blackjackGame.address);
+  console.log("Blackjack Contract deployed to:", blackjackContract.address);
 }
 
 main()
