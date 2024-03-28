@@ -1,10 +1,9 @@
-// pages.index.jsx 
 import Head from 'next/head';
 import MetaMaskButton from '../components/MetaMaskButton';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-cover bg-no-repeat" style={{ backgroundImage: "url('/images/br-eth-green.jpg')" }}>
+    <div className="min-h-screen bg-cover bg-no-repeat bg-center" style={{ backgroundImage: "url('/images/br-eth-green.jpg')" }}>
       <Head>
         <title>Blackjack</title>
       </Head>
@@ -17,3 +16,4 @@ export default function Home() {
     </div>
   );
 }
+
