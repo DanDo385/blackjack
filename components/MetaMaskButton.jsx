@@ -1,28 +1,33 @@
-import Image from 'next/image';
+import Image from 'next/future/image'; // For Next.js 12 and newer
+import { useState } from 'react';
+
 const MetaMaskButton = () => {
+  const [error, setError] = useState('');
+
   const handleSignIn = async () => {
+    setError(''); 
     try {
-      // Check if MetaMask is installed
-      if (typeof window.ethereum !== 'undefined') {
-        // Request account access
+      if (window.ethereum) {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        // Successfully logged in
         console.log('Connected with account:', accounts[0]);
-        alert(`Connected with account: ${accounts[0]}`); // Optional: alert the user
+        
       } else {
-        alert('MetaMask is not installed. Please install it to use this app.');
-        console.log('MetaMask is not installed. Please install it to use this app.');
+        setError('MetaMask is not installed. Please install it to use this app.');
       }
     } catch (error) {
       console.error('Error connecting to MetaMask:', error);
+      setError('Failed to connect to MetaMask. Please try again.');
     }
   };
 
   return (
-    <button onClick={handleSignIn} className="bg-orange-400 p-4 rounded-lg flex items-center text-slate-900 hover:bg-orange-600 transition-colors">
-      <Image src="/images/metamask.jpg" alt="MetaMask" width={40} height={40} layout="fixed" />
-      <span className="ml-2">Sign In to MetaMask</span>
-    </button>
+    <div>
+      <button onClick={handleSignIn} className="bg-orange-400 p-4 rounded-lg flex items-center text-slate-900 hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50">
+        <Image src="/images/metamask.jpg" alt="MetaMask" width={40} height={40} fill={false} />
+        <span className="ml-2">Sign In to MetaMask</span>
+      </button>
+      {error && <p className="text-red-500 mt-2">{error}</p>}
+    </div>
   );
 };
 
