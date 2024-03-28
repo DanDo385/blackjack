@@ -1,34 +1,19 @@
-import { useState } from 'react';
+import React from 'react';
 
-const GameBoard = () => {
-  const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
-
-  const toggleCheatSheet = () => setIsCheatSheetOpen(!isCheatSheetOpen);
-
+// Assuming the Hand component can accept a prop called 'cards' which is an array of image paths for rendering
+const GameBoard = ({ dealerHand, playerHand }) => {
   return (
-    <div className="relative">
-      {/* Background Image */}
-      <img
-        src="/images/boards/eth-board.jpg"
-        alt="Blackjack Game Board"
-        className="h-full w-full object-cover absolute top-0 left-0 z-0"
-      />
-     
-      <div
-        className={`fixed bottom-0 left-0 w-full h-screen bg-gray-900 bg-opacity-75 z-10 transition-all duration-300 ease-in-out ${
-          isCheatSheetOpen ? '' : 'translate-y-full'
-        }`}
-      >
-        <img
-          src="/images/cheatsheet/cheat-sheet.jpeg"
-          alt="Blackjack Cheat Sheet"
-          className="mx-auto my-auto h-auto w-full max-w-2xl max-h-full object-contain"
-          onClick={toggleCheatSheet}
-        />
+    <div className="game-board bg-green-500 min-h-screen flex flex-col items-center justify-center">
+      <div className="dealer-hand mb-8">
+        <h2 className="text-white text-2xl mb-2">Dealer's Hand:</h2>
+        {/* Render dealer's hand here. If the Hand component is elsewhere, ensure to import and use it properly */}
+         <Hand cards={dealerHand} /> */}
       </div>
-      <button onClick={toggleCheatSheet} className="absolute bottom-4 left-4 z-20">
-        {isCheatSheetOpen ? 'Hide Cheat Sheet' : 'Show Cheat Sheet'}
-      </button>
+      <div className="player-hand">
+        <h2 className="text-white text-2xl mb-2">Player's Hand:</h2>
+        {/* Render player's hand here */}
+        <Hand cards={playerHand} /> */}
+      </div>
     </div>
   );
 };
