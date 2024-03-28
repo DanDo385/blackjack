@@ -1,5 +1,5 @@
 // hardhat.config.js
-require("@nomicfoundation/hardhat-ethers");
+require("@nomicfoundation/hardhat-ignition-ethers"); 
 require("dotenv").config();
 
 const { INFURA_API_KEY, PRIVATE_KEY } = process.env;
