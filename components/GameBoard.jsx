@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const GameBoard = () => {
   const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);

@@ -1,6 +1,6 @@
 // components/Navbar.jsx
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const Navbar = () => {
   return (
@@ -8,12 +8,9 @@ const Navbar = () => {
       <div className="container mx-auto flex justify-between items-center">
         <div className="text-lg font-bold flex items-center">
           <Image src="/images/acekingbw.jpg" alt="Logo" width={50} height={50} className="mr-2"/>
-          <Link href="/">
-            <span className="cursor-pointer">Blackjack</span>
-          </Link>
+          <span>Blackjack</span> {/* This is now plain text, not a link */}
         </div>
         <div className="flex gap-4">
-          {/* Removed Login Link */}
           <Link href="/game">
             <span className="cursor-pointer hover:text-green-700 transition-colors">Game</span>
           </Link>
@@ -27,3 +24,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
