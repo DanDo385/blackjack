@@ -1,30 +1,36 @@
-// components/GameBoard.js
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { ethers } from 'ethers';
-import DealButton from './DealButton'; // Import the DealButton component
-import contractABI from '../path/to/your/contractABI.json'; // Adjust the path accordingly
+import React, { useState } from 'react';
 
-const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+const GameBoard = () => {
+  const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
 
-function GameBoard() {
-  const [playerHand, setPlayerHand] = useState([]);
-  const [dealerHand, setDealerHand] = useState([]);
-  const [cheatsheetVisible, setCheatsheetVisible] = useState(false);
-
-  // The dealHands function remains the same as previously defined
-  async function dealHands() {
-    // Functionality to interact with the smart contract and deal hands
-  }
+  const toggleCheatSheet = () => setIsCheatSheetOpen(!isCheatSheetOpen);
 
   return (
-    <div className="relative h-screen w-screen bg-cover bg-no-repeat" style={{ backgroundImage: "url('/images/boards/eth-board.jpg')" }}>
-      <div className="absolute top-4 right-4">
-        <DealButton onDeal={dealHands} />
+    <div className="relative">
+      {/* Background Image */}
+      <img
+        src="/images/boards/eth-board.jpg"
+        alt="Blackjack Game Board"
+        className="h-full w-full object-cover absolute top-0 left-0 z-0"
+      />
+     
+      <div
+        className={`fixed bottom-0 left-0 w-full h-screen bg-gray-900 bg-opacity-75 z-10 transition-all duration-300 ease-in-out ${
+          isCheatSheetOpen ? '' : 'translate-y-full'
+        }`}
+      >
+        <img
+          src="/images/cheatsheet/cheat-sheet.jpeg"
+          alt="Blackjack Cheat Sheet"
+          className="mx-auto my-auto h-auto w-full max-w-2xl max-h-full object-contain"
+          onClick={toggleCheatSheet}
+        />
       </div>
-      {/* Remaining implementation of the GameBoard component */}
+      <button onClick={toggleCheatSheet} className="absolute bottom-4 left-4 z-20">
+        {isCheatSheetOpen ? 'Hide Cheat Sheet' : 'Show Cheat Sheet'}
+      </button>
     </div>
   );
-}
+};
 
 export default GameBoard;

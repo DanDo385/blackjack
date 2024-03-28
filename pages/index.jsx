@@ -1,18 +1,22 @@
 import Head from 'next/head';
-import MetaMaskButton from '../components/MetaMaskButton';
+import '../styles/globals.css';
+import Navbar from '../components/Navbar';
 
-export default function Home() {
+function MyApp({ Component, pageProps }) {
+  const noNavbar = pageProps.noNavbar; // Add a prop to control the display of the Navbar
+
   return (
-    <div className="min-h-screen bg-cover bg-no-repeat bg-center" style={{ backgroundImage: "url('/images/br-eth-green.jpg')" }}>
+    <>
       <Head>
-        <title>Blackjack</title>
+        <title>Blackjack</title> 
+        <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="flex flex-col items-center justify-center min-h-screen">
-        <h2 className="text-orange-500 text-xl text-center font-bold">
-          Sign In to Begin Playing Blackjack on the Sepolia Test Network
-        </h2>
-        <MetaMaskButton />
-      </main>
-    </div>
+      {!noNavbar && <Navbar />} {/* Conditionally render the Navbar based on the prop */}
+      <div className={`md:ml-60 ${noNavbar ? '' : 'mt-12'}`}> {/* Adjust top margin when Navbar is not present */}
+        <Component {...pageProps} />
+      </div>
+    </>
   );
 }
+
+export default MyApp;

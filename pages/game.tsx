@@ -1,6 +1,6 @@
 // pages/game.jsx
 import { useState } from 'react';
-import { Navbar, Hand, ActionButton } from '../components';
+import { Navbar, GameBoard } from '@/components';
 
 const game = () => {
   const [playerHand, setPlayerHand] = useState(['2-C', '3-D']); // Example cards
@@ -15,6 +15,7 @@ const game = () => {
   return (
     <>
       <Navbar />
+      <GameBoard />
       <div className="flex flex-col items-center justify-center min-h-screen py-2">
         {/* Dealer's hand with the face-down card represented by 'back' */}
         <Hand cards={dealerHand} />

@@ -1,4 +1,4 @@
-import Image from 'next/future/image'; // For Next.js 12 and newer
+import Image from 'next/image'; // For Next.js 12 and newer
 import { useState } from 'react';
 
 const MetaMaskButton = () => {
