@@ -1,8 +1,34 @@
+// hardhat.config.js
+require("@nomicfoundation/hardhat-ethers");
+require("dotenv").config();
+
+const { INFURA_API_KEY, PRIVATE_KEY } = process.env;
+
 module.exports = {
-  solidity: "0.8.24",
+  defaultNetwork: "sepolia",
   networks: {
-    localhost: {
-      url: "http://127.0.0.1:8545",
-    },
+    hardhat: {},
+    sepolia: {
+      url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [PRIVATE_KEY]
+    }
   },
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
+  },
+  mocha: {
+    timeout: 40000
+  }
 };
