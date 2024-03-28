@@ -1,20 +1,19 @@
 // scripts/deploy.js
-// scripts/deploy.js
+const hre = require("@nomicfoundation/hardhat-ethers");
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [deployer] = await hre.ethers.getSigners();
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  const Contract = await ethers.getContractFactory("Blackjack");
+  const Contract = await hre.ethers.getContractFactory("Blackjack");
   const contract = await Contract.deploy();
-
+  
+  // The contract is deployed when the promise resolves
   console.log("Blackjack contract deployed to:", contract.address);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
