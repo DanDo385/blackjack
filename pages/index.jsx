@@ -3,20 +3,15 @@ import MetaMaskButton from '../components/MetaMaskButton';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-cover bg-no-repeat bg-center" style={{ backgroundImage: "url('/images/br-eth-green.jpg')" }}>
+    <div className="min-h-screen bg-no-repeat bg-cover bg-center" style={{ backgroundImage: "url('/images/br-eth-green.jpg')" }}>
       <Head>
         <title>Blackjack</title>
+        <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="flex flex-col items-center justify-center min-h-screen">
-        <h2 className="text-orange-500 text-xl text-center font-bold">
-          Sign In to Begin Playing Blackjack on the Sepolia Test Network
-        </h2>
+
+      <div className="flex flex-col items-center justify-center h-screen">
         <MetaMaskButton />
-      </main>
+      </div>
     </div>
   );
 }
-
-Home.getInitialProps = async () => {
-  return { noNavbar: true }; // Tell _app.jsx not to display the Navbar on this page
-};
