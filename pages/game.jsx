@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ethers } from 'ethers';
 import Navbar from '@/components/Navbar'; // Adjust path as needed
 import GameBoard from '@/components/GameBoard'; // Adjust path as needed
