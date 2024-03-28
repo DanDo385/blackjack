@@ -6,7 +6,6 @@ class MyDocument extends Document {
     return (
       <Html>
         <Head>
-          <title>Blackjack</title>
           <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap" rel="stylesheet" />
         </Head>
         <body>
