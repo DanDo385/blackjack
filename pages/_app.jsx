@@ -9,7 +9,6 @@ function MyApp({ Component, pageProps }) {
     <>
       <Head>
         <title>Blackjack</title> // Set a default title for all pages
-        <link rel="icon" href="/favicon.ico" /> // Include the favicon
       </Head>
       <Navbar />
       <Component {...pageProps} />
