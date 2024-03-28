@@ -5,12 +5,11 @@
 /* Import Poppins font with the weight of 500 */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap');
 
-html,
-body {
+html, body {
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
-  background-color: #1e293b; 
-  color: #1e293b; 
+  background-color: #1e293b; /* Dark background fallback */
+  color: #1e293b; /* Default text color */
 }
 
 /* Customize button styles globally if needed */

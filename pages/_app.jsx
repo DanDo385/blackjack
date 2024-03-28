@@ -6,8 +6,8 @@ function MyApp({ Component, pageProps }) {
   return (
     <>
       <Head>
-        <title>Blackjack</title> {/* Set a default title; can be overridden in individual pages */}
-        <link rel="icon" href="/favicon.ico" /> {/* Reference to the favicon */}
+        <title>Blackjack</title> 
+        <link rel="icon" href="/favicon.ico" />
       </Head>
       <Navbar />
       <div className="md:ml-60">

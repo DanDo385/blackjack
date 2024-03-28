@@ -8,12 +8,11 @@ export default function Home() {
         <title>Blackjack</title>
       </Head>
       <main className="flex flex-col items-center justify-center min-h-screen">
-        <h2 className="text-green-400 text-xl">
-          Sign In to MetaMask to begin playing blackjack on the Sepolia Test Network
+        <h2 className="text-orange-500 text-xl text-center font-bold">
+          Sign In to Begin Playing Blackjack on the Sepolia Test Network
         </h2>
         <MetaMaskButton />
       </main>
     </div>
   );
 }
-
