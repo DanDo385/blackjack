@@ -26,7 +26,20 @@ const GameBoard = ({
         <CardCount cardCount={cardCount} />
       </div>
       <div className="flex flex-col items-center justify-center min-h-screen">
-        {/* Dealer and Player Hands, ActionButtons, and CheatsheetDrawer components */}
+        <div className="dealer-hand mb-8">
+          <h2 className="text-white text-2xl mb-2">Dealer's Hand:</h2>
+          <Hand cards={dealerHand} />
+        </div>
+        <div className="player-hand mb-8">
+          <h2 className="text-white text-2xl mb-2">Player's Hand:</h2>
+          <Hand cards={playerHand} />
+        </div>
+        <ActionButtons
+          onHit={onHit}
+          onStand={onStand}
+          gameState={gameState}
+        />
+        <CheatsheetDrawer />
       </div>
     </div>
   );
