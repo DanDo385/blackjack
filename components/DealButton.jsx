@@ -1,4 +1,4 @@
-// DealButton.jsx
+// components/DealButton.jsx
 const DealButton = ({ onClick }) => {
   return (
     <button

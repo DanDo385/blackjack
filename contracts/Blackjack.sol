@@ -17,7 +17,7 @@ contract Blackjack {
         dealHands(); // Deal hands upon contract deployment
     }
 
-    function initializeDeck() internal {
+    function initializeDeck() public {
         delete deck; // Clear any existing deck
         string[13] memory ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
         string[4] memory suits = ["C", "D", "H", "S"];
@@ -38,7 +38,7 @@ contract Blackjack {
         emit DeckShuffled();
     }
 
-    function dealHands() internal {
+    function dealHands() public {
         for(int i = 0; i < 2; i++) {
             playerHand.push(dealCard());
             dealerHand.push(dealCard());

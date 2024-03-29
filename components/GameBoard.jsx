@@ -1,6 +1,4 @@
-import React from 'react';
-
-// Assuming the Hand component can accept a prop called 'cards' which is an array of image paths for rendering
+// components/GameBoard.jsx
 const GameBoard = ({ dealerHand, playerHand }) => {
   return (
     <div className="game-board bg-green-500 min-h-screen flex flex-col items-center justify-center">
