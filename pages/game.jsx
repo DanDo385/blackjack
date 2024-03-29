@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+//pages/game.jsx
+import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import GameBoard from '../components/GameBoard';
 import BlackjackABI from '../constants/BlackjackABI.json';
