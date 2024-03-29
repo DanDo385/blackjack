@@ -1,11 +1,7 @@
-// Import necessary hooks and components from React and other files
+// Import necessary hooks and utilities
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import Navbar from '../components/Navbar';
 import GameBoard from '../components/GameBoard';
-import ActionButtons from '../components/ActionButtons';
-import DealButton from '../components/DealButton';
-import CheatsheetDrawer from '../components/CheatsheetDrawer';
 import BlackjackABI from '../constants/BlackjackABI.json'; // Your ABI path
 
 const initialGameState = {
@@ -18,66 +14,66 @@ const initialGameState = {
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
-
 export default function Game() {
   const [gameState, setGameState] = useState(initialGameState);
   const [dealerHand, setDealerHand] = useState([]);
   const [playerHand, setPlayerHand] = useState([]);
-
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const signer = provider.getSigner();
-  const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI.abi, signer);
+  const [cardCount, setCardCount] = useState(0); // Assuming you want to display this
 
   useEffect(() => {
-    // Prompt user to connect wallet
-    async function connectWallet() {
-      try {
-        await provider.send("eth_requestAccounts", []);
-      } catch (error) {
-        console.error(error);
+    const connectWallet = async () => {
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI.abi, signer);
+          
+          // Example of setting up a listener for contract events
+          blackjackContract.on('CardDealt', (card) => {
+            console.log('Card dealt:', card);
+          });
+
+          // Example of fetching initial state from the contract
+          fetchInitialState(blackjackContract);
+        } catch (error) {
+          console.error('Error connecting to Metamask:', error);
+        }
+      } else {
+        console.error('Please install Metamask.');
       }
-    }
+    };
+
     connectWallet();
-  }, [provider]);
+  }, []);
 
-  const dealCards = async () => {
-    try {
-      // Run the dealHands function from the smart contract
-      const tx = await blackjackContract.dealHands();
-      await tx.wait();
+  const fetchInitialState = async (blackjackContract) => {
+    const dealerHandFromContract = await blackjackContract.getDealerHand();
+    const playerHandFromContract = await blackjackContract.getPlayerHand();
+    const cardCountFromContract = await blackjackContract.getCardCount();
 
-      // Fetch the updated hands
-      const dealerHandFromContract = await blackjackContract.getDealerHand();
-      const playerHandFromContract = await blackjackContract.getPlayerHand();
-
-      // Update local state with fetched hands
-      setDealerHand(dealerHandFromContract);
-      setPlayerHand(playerHandFromContract);
-    } catch (error) {
-      console.error(error);
-    }
+    setDealerHand(dealerHandFromContract);
+    setPlayerHand(playerHandFromContract);
+    setCardCount(cardCountFromContract);
   };
 
-  // Other handler implementations...
+  const dealCards = async () => {
+    // Example of dealing cards (Assuming blackjackContract is initialized correctly)
+  };
+
+  // Handler functions for other actions...
 
   return (
     <div className="min-h-screen bg-green-800">
-      <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        <GameBoard dealerHand={dealerHand} playerHand={playerHand} />
-        <ActionButtons
-          onHit={() => {}}
-          onStand={() => {}}
-          onDoubleDown={() => {}}
-          onSplit={() => {}}
-          onInsurance={() => {}}
-          gameState={gameState}
-        />
-        <div className="flex justify-center my-4">
-          <DealButton onClick={dealCards} />
-        </div>
-        <CheatsheetDrawer />
-      </div>
+      <GameBoard 
+        dealerHand={dealerHand} 
+        playerHand={playerHand} 
+        onDealCards={dealCards} 
+        gameState={gameState} 
+        onHit={() => {}} // Define or pass these functions
+        onStand={() => {}} // Define or pass these functions
+        cardCount={cardCount}
+      />
     </div>
   );
 }
