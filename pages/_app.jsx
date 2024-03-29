@@ -8,7 +8,7 @@ function MyApp({ Component, pageProps }) {
   return (
     <>
       <Head>
-        <title>Blackjack</title> // Set a default title for all pages
+        <title>Blackjack</title> 
       </Head>
       <Navbar />
       <Component {...pageProps} />

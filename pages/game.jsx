@@ -1,7 +1,6 @@
 // Import necessary hooks and components from React and other files
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import Hand from '../components/Hand';
 import Navbar from '../components/Navbar';
 import GameBoard from '../components/GameBoard';
 import ActionButtons from '../components/ActionButtons';
