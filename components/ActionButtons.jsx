@@ -1,5 +1,5 @@
 // components/ActionButton.jsx
-const ActionButton = ({ onHit, onStand, onDoubleDown, onSplit, onInsurance, gameState }) => {
+const ActionButtons = ({ onHit, onStand, onDoubleDown, onSplit, onInsurance, gameState }) => {
     return (
       <div className="action-buttons flex justify-around w-full p-4">
         <button
@@ -41,5 +41,5 @@ const ActionButton = ({ onHit, onStand, onDoubleDown, onSplit, onInsurance, game
     );
   };
   
-  export default ActionButton;
+  export default ActionButtons;
   

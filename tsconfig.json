@@ -21,7 +21,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx"
-, "pages/game.jsx", "components/ActionButton.jsx"  ],
+, "pages/game.jsx", "components/ActionButtons.jsx"  ],
   "exclude": [
     "node_modules"
   ]

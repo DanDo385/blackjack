@@ -1,61 +1,74 @@
-import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-import GameBoard from './components/GameBoard';
-import DealButton from './components/DealButton';
-import ActionButton from './components/ActionButton';
-import blackjackABI from './constants/blackjackABI.json';
+import { useState, useEffect } from 'react';
+import Navbar from '../components/Navbar';
+import GameBoard from '../components/GameBoard';
+import ActionButtons from '../components/ActionButton';
+import DealButton from '../components/DealButton';
+import CheatsheetDrawer from '../components/CheatsheetDrawer';
 
-const contractAddress = "YOUR_CONTRACT_ADDRESS_HERE";
+// Dummy initial state, replace with actual game logic as needed
+const initialGameState = {
+  canHit: true,
+  canStand: true,
+  canDoubleDown: false,
+  canSplit: false,
+  canInsurance: false,
+};
 
-const Game = () => {
-  const [playerHand, setPlayerHand] = useState<string[]>([]);
-  const [dealerHand, setDealerHand] = useState<string[]>([]);
+export default function Game() {
+  const [gameState, setGameState] = useState(initialGameState);
+  const [dealerHand, setDealerHand] = useState(['back']); // 'back' represents the back of a card
+  const [playerHand, setPlayerHand] = useState([]);
 
-  // Initialize ethers upon component mount
-  useEffect(() => {
-    if (typeof window.ethereum !== 'undefined') {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const blackjackContract = new ethers.Contract(contractAddress, blackjackABI.abi, signer);
+  // Dummy function for dealing cards, replace with your contract interaction logic
+  const dealCards = () => {
+    // Simulate dealing cards here
+    setDealerHand(['2-C', 'back']); // Update with real data
+    setPlayerHand(['K-H', 'A-S']); // Update with real data
+  };
 
-      // Example: Load initial game state here
-      // You might want to load existing game state from the contract when the component mounts
-    } else {
-      console.error("Ethereum wallet is not connected");
-    }
-  }, []);
+  const handleHit = () => {
+    console.log('Hit action');
+    // Implement game logic here
+  };
 
-  const deal = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const blackjackContract = new ethers.Contract(contractAddress, blackjackABI.abi, signer);
+  const handleStand = () => {
+    console.log('Stand action');
+    // Implement game logic here
+  };
 
-      try {
-        // Assuming dealHands is a transaction that changes state, you must send a transaction
-        const tx = await blackjackContract.dealHands();
-        await tx.wait(); // Wait for the transaction to be mined
+  const handleDoubleDown = () => {
+    console.log('Double Down action');
+    // Implement game logic here
+  };
 
-        // Fetch updated hands from the contract
-        const updatedPlayerHand = await blackjackContract.getPlayerHand();
-        const updatedDealerHand = await blackjackContract.getDealerHand();
+  const handleSplit = () => {
+    console.log('Split action');
+    // Implement game logic here
+  };
 
-        setPlayerHand(updatedPlayerHand);
-        setDealerHand([updatedDealerHand[0], "back"]); // Assuming you show only one dealer card and a back placeholder
-      } catch (error) {
-        console.error("Could not deal hands:", error);
-      }
-    }
+  const handleInsurance = () => {
+    console.log('Insurance action');
+    // Implement game logic here
   };
 
   return (
-    <div>
-      <GameBoard playerHand={playerHand} dealerHand={dealerHand} />
-      <DealButton onClick={deal} />
-      <ActionButton />
-      {/* Assuming ActionButton component's logic and props are handled appropriately */}
+    <div className="min-h-screen bg-green-800">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        <GameBoard dealerHand={dealerHand} playerHand={playerHand} />
+        <ActionButtons
+          onHit={handleHit}
+          onStand={handleStand}
+          onDoubleDown={handleDoubleDown}
+          onSplit={handleSplit}
+          onInsurance={handleInsurance}
+          gameState={gameState}
+        />
+        <div className="flex justify-center my-4">
+          <DealButton onClick={dealCards} />
+        </div>
+        <CheatsheetDrawer />
+      </div>
     </div>
   );
-};
-
-export default Game;
+}
