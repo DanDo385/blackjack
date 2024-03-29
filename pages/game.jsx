@@ -1,4 +1,3 @@
-// pages/game.jsx
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import GameBoard from '../components/GameBoard';
@@ -20,29 +19,38 @@ export default function Game() {
 
   useEffect(() => {
     // Prompt user to connect wallet on component mount
-    const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    provider.send("eth_requestAccounts", []).catch(console.error);
+    // This ensures MetaMask or other Ethereum provider extension is prompted to connect
+    if (typeof window !== 'undefined' && window.ethereum) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      provider.send("eth_requestAccounts", []).catch(console.error);
+    }
   }, []);
 
   const dealCards = async () => {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      const signer = provider.getSigner();
-      const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
+    // Ensure Ethereum provider is available before attempting to interact with the blockchain
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const signer = provider.getSigner();
+        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI.abi, signer);
 
-      // Execute dealHands function from the contract
-      await blackjackContract.dealHands().then((tx) => tx.wait());
+        // Execute dealHands function from the contract
+        await blackjackContract.dealHands().then((tx) => tx.wait());
 
-      // Fetch updated hands and card count
-      const dealer = await blackjackContract.getDealerHand();
-      const player = await blackjackContract.getPlayerHand();
-      const count = await blackjackContract.getCardCount();
+        // Fetch updated hands and card count
+        const dealer = await blackjackContract.getDealerHand();
+        const player = await blackjackContract.getPlayerHand();
+        const count = await blackjackContract.getCardCount();
 
-      setDealerHand(dealer);
-      setPlayerHand(player);
-      setCardCount(count.toNumber()); // Assuming cardCount is an integer value
-    } catch (error) {
-      console.error(error);
+        // Update state with fetched data
+        setDealerHand(dealer);
+        setPlayerHand(player);
+        setCardCount(count.toNumber()); // Assuming cardCount is an integer value
+      } catch (error) {
+        console.error(error);
+      }
+    } else {
+      console.error("Ethereum provider (e.g., MetaMask) not found.");
     }
   };
 
