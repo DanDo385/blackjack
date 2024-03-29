@@ -1,4 +1,3 @@
-// components/DealButton.jsx
 import React from 'react';
 import { ethers } from 'ethers';
 import BlackjackABI from '../constants/BlackjackABI.json';
@@ -11,7 +10,7 @@ const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
       try {
         const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
         const signer = provider.getSigner();
-        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI.abi, signer);
+        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
         await blackjackContract.dealHands().then((tx) => tx.wait());
 
@@ -21,7 +20,7 @@ const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
 
         setDealerHand(dealer);
         setPlayerHand(player);
-        setCardCount(count.toNumber());
+        setCardCount(parseInt(count.toString(), 10)); // Assuming cardCount is a BigNumber and converting it to a number
       } catch (error) {
         console.error("DealButton error:", error);
       }
