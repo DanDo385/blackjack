@@ -5,12 +5,12 @@ const GameBoard = ({ dealerHand, playerHand }) => {
       <div className="dealer-hand mb-8">
         <h2 className="text-white text-2xl mb-2">Dealer's Hand:</h2>
         {/* Render dealer's hand here. If the Hand component is elsewhere, ensure to import and use it properly */}
-         <Hand cards={dealerHand} /> */}
+         <Hand cards={dealerHand} />
       </div>
       <div className="player-hand">
         <h2 className="text-white text-2xl mb-2">Player's Hand:</h2>
         {/* Render player's hand here */}
-        <Hand cards={playerHand} /> */}
+        <Hand cards={playerHand} />
       </div>
     </div>
   );

@@ -1,11 +1,14 @@
+// Import necessary hooks and components from React and other files
 import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import Hand from '../components/Hand';
 import Navbar from '../components/Navbar';
 import GameBoard from '../components/GameBoard';
-import ActionButtons from '../components/ActionButton';
+import ActionButtons from '../components/ActionButtons';
 import DealButton from '../components/DealButton';
 import CheatsheetDrawer from '../components/CheatsheetDrawer';
+import BlackjackABI from '../constants/BlackjackABI.json'; // Your ABI path
 
-// Dummy initial state, replace with actual game logic as needed
 const initialGameState = {
   canHit: true,
   canStand: true,
@@ -14,42 +17,49 @@ const initialGameState = {
   canInsurance: false,
 };
 
+const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+
+
 export default function Game() {
   const [gameState, setGameState] = useState(initialGameState);
-  const [dealerHand, setDealerHand] = useState(['back']); // 'back' represents the back of a card
+  const [dealerHand, setDealerHand] = useState([]);
   const [playerHand, setPlayerHand] = useState([]);
 
-  // Dummy function for dealing cards, replace with your contract interaction logic
-  const dealCards = () => {
-    // Simulate dealing cards here
-    setDealerHand(['2-C', 'back']); // Update with real data
-    setPlayerHand(['K-H', 'A-S']); // Update with real data
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const signer = provider.getSigner();
+  const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI.abi, signer);
+
+  useEffect(() => {
+    // Prompt user to connect wallet
+    async function connectWallet() {
+      try {
+        await provider.send("eth_requestAccounts", []);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    connectWallet();
+  }, [provider]);
+
+  const dealCards = async () => {
+    try {
+      // Run the dealHands function from the smart contract
+      const tx = await blackjackContract.dealHands();
+      await tx.wait();
+
+      // Fetch the updated hands
+      const dealerHandFromContract = await blackjackContract.getDealerHand();
+      const playerHandFromContract = await blackjackContract.getPlayerHand();
+
+      // Update local state with fetched hands
+      setDealerHand(dealerHandFromContract);
+      setPlayerHand(playerHandFromContract);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const handleHit = () => {
-    console.log('Hit action');
-    // Implement game logic here
-  };
-
-  const handleStand = () => {
-    console.log('Stand action');
-    // Implement game logic here
-  };
-
-  const handleDoubleDown = () => {
-    console.log('Double Down action');
-    // Implement game logic here
-  };
-
-  const handleSplit = () => {
-    console.log('Split action');
-    // Implement game logic here
-  };
-
-  const handleInsurance = () => {
-    console.log('Insurance action');
-    // Implement game logic here
-  };
+  // Other handler implementations...
 
   return (
     <div className="min-h-screen bg-green-800">
@@ -57,11 +67,11 @@ export default function Game() {
       <div className="container mx-auto px-4 py-8">
         <GameBoard dealerHand={dealerHand} playerHand={playerHand} />
         <ActionButtons
-          onHit={handleHit}
-          onStand={handleStand}
-          onDoubleDown={handleDoubleDown}
-          onSplit={handleSplit}
-          onInsurance={handleInsurance}
+          onHit={() => {}}
+          onStand={() => {}}
+          onDoubleDown={() => {}}
+          onSplit={() => {}}
+          onInsurance={() => {}}
           gameState={gameState}
         />
         <div className="flex justify-center my-4">

@@ -1,4 +1,4 @@
-// components/ActionButton.jsx
+// components/ActionButtons.jsx
 const ActionButtons = ({ onHit, onStand, onDoubleDown, onSplit, onInsurance, gameState }) => {
     return (
       <div className="action-buttons flex justify-around w-full p-4">
