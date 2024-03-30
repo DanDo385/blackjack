@@ -1,7 +1,7 @@
 // Import necessary modules and functions
-import { expect } from 'chai';
-import pkg from 'hardhat';
-const { ethers } = pkg;
+const { expect } = require('chai');
+const { ethers } = require('hardhat');
+
 
 
 describe("Blackjack Contract", function () {
