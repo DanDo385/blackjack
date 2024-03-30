@@ -1,71 +1,58 @@
-//pages/game.jsx
-import { useState, useEffect } from 'react';
-import GameBoard from '../components/GameBoard';
-import { ethers } from 'ethers';
-import BlackjackABI from '../constants/BlackjackABI.json';
+// components/GameBoard.jsx
+import React from 'react';
+import DealButton from './DealButton'; // Ensure this is correctly pointing to the location of DealButton
+import Hand from './Hand'; // Placeholder - ensure you have a Hand component
+import ActionButtons from './ActionButtons'; // Placeholder - ensure you have an ActionButtons component
+import CheatsheetDrawer from './CheatsheetDrawer'; // Placeholder - ensure you have a CheatsheetDrawer component
+import CardCount from './CardCount'; // Placeholder - ensure you have a CardCount component
 
-const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-
-export default function Game() {
-  const [gameState, setGameState] = useState({
-    canHit: true,
-    canStand: true,
-    canDoubleDown: false,
-    canSplit: false,
-    canInsurance: false,
-  });
-  const [dealerHand, setDealerHand] = useState([]);
-  const [playerHand, setPlayerHand] = useState([]);
-  const [cardCount, setCardCount] = useState(0);
-
-  useEffect(() => {
-    // Prompt user to connect wallet on component mount
-    // This ensures MetaMask or other Ethereum provider extension is prompted to connect
-    if (typeof window !== 'undefined' && window.ethereum) {
-      const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-      provider.send("eth_requestAccounts", []).catch(console.error);
-    }
-  }, []);
-
-  const dealCards = async () => {
-    // Ensure Ethereum provider is available before attempting to interact with the blockchain
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-        const signer = provider.getSigner();
-        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI.abi, signer);
-
-        // Execute dealHands function from the contract
-        await blackjackContract.dealHands().then((tx) => tx.wait());
-
-        // Fetch updated hands and card count
-        const dealer = await blackjackContract.getDealerHand();
-        const player = await blackjackContract.getPlayerHand();
-        const count = await blackjackContract.getCardCount();
-
-        // Update state with fetched data
-        setDealerHand(dealer);
-        setPlayerHand(player);
-        setCardCount(count.toNumber()); // Assuming cardCount is an integer value
-      } catch (error) {
-        console.error(error);
-      }
-    } else {
-      console.error("Ethereum provider (e.g., MetaMask) not found.");
-    }
-  };
-
+const GameBoard = ({
+  dealerHand,
+  playerHand,
+  setDealerHand,
+  setPlayerHand,
+  setCardCount,
+  gameState,
+  onHit,
+  onStand,
+  cardCount,
+}) => {
   return (
-    <div>
-      <GameBoard
-        dealerHand={dealerHand}
-        playerHand={playerHand}
-        onDealCards={dealCards}
-        gameState={gameState}
-        onHit={() => {}}
-        onStand={() => {}}
-        cardCount={cardCount}
-      />
+    <div className="game-board bg-cover bg-center min-h-screen relative" style={{ backgroundImage: "url('/images/boards/eth-board.jpg')" }}>
+      {/* DealButton pinned to the top left corner */}
+      <div className="absolute top-0 left-0 m-4">
+        <DealButton 
+          setDealerHand={setDealerHand} 
+          setPlayerHand={setPlayerHand} 
+          setCardCount={setCardCount} 
+        />
+      </div>
+      {/* CardCount pinned to the top right corner */}
+      <div className="absolute top-0 right-0 m-4">
+        <CardCount cardCount={cardCount} />
+      </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="dealer-hand mb-8">
+          <h2 className="text-white text-2xl mb-2">Dealer's Hand:</h2>
+          {/* Ensure Hand component can render a list of cards */}
+          <Hand cards={dealerHand} />
+        </div>
+        <div className="player-hand mb-8">
+          <h2 className="text-white text-2xl mb-2">Player's Hand:</h2>
+          {/* Ensure Hand component can render a list of cards */}
+          <Hand cards={playerHand} />
+        </div>
+        {/* ActionButtons for Hit, Stand, etc. */}
+        <ActionButtons
+          onHit={onHit}
+          onStand={onStand}
+          gameState={gameState}
+        />
+        {/* Drawer or modal for blackjack cheatsheet or help */}
+        <CheatsheetDrawer />
+      </div>
     </div>
   );
-}
+};
+
+export default GameBoard;

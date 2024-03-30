@@ -1,9 +1,10 @@
+// components/GameBoard.jsx
 import React from 'react';
-import Hand from './Hand';
-import DealButton from './DealButton';
-import CheatsheetDrawer from './CheatsheetDrawer';
-import ActionButtons from './ActionButtons';
-import CardCount from './CardCount';
+import DealButton from './DealButton'; // Ensure this is correctly pointing to the location of DealButton
+import Hand from './Hand'; // Placeholder - ensure you have a Hand component
+import ActionButtons from './ActionButtons'; // Placeholder - ensure you have an ActionButtons component
+import CheatsheetDrawer from './CheatsheetDrawer'; // Placeholder - ensure you have a CheatsheetDrawer component
+import CardCount from './CardCount'; // Placeholder - ensure you have a CardCount component
 
 const GameBoard = ({
   dealerHand,
@@ -33,17 +34,21 @@ const GameBoard = ({
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="dealer-hand mb-8">
           <h2 className="text-white text-2xl mb-2">Dealer's Hand:</h2>
+          {/* Ensure Hand component can render a list of cards */}
           <Hand cards={dealerHand} />
         </div>
         <div className="player-hand mb-8">
           <h2 className="text-white text-2xl mb-2">Player's Hand:</h2>
+          {/* Ensure Hand component can render a list of cards */}
           <Hand cards={playerHand} />
         </div>
+        {/* ActionButtons for Hit, Stand, etc. */}
         <ActionButtons
           onHit={onHit}
           onStand={onStand}
           gameState={gameState}
         />
+        {/* Drawer or modal for blackjack cheatsheet or help */}
         <CheatsheetDrawer />
       </div>
     </div>

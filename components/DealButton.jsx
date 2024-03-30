@@ -1,4 +1,4 @@
-import React from 'react';
+// components/DealButton.jsx
 import { ethers } from 'ethers';
 import BlackjackABI from '../constants/BlackjackABI.json';
 
@@ -6,9 +6,9 @@ const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
 const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
   const dealCards = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
+    if (window.ethereum) {
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
         const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
@@ -20,7 +20,7 @@ const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
 
         setDealerHand(dealer);
         setPlayerHand(player);
-        setCardCount(parseInt(count.toString(), 10)); // Assuming cardCount is a BigNumber and converting it to a number
+        setCardCount(parseInt(count.toString(), 10));  // Adjust if necessary for your contract
       } catch (error) {
         console.error("DealButton error:", error);
       }
@@ -29,14 +29,7 @@ const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
     }
   };
 
-  return (
-    <button
-      className="px-4 py-2 bg-blue-500 text-white font-bold rounded hover:bg-blue-700"
-      onClick={dealCards}
-    >
-      Deal
-    </button>
-  );
+  return <button onClick={dealCards}>Deal</button>;
 };
 
 export default DealButton;
