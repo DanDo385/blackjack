@@ -1,8 +1,11 @@
-import Image from 'next/image'; // For Next.js 12 and newer
+// components/MetaMaskButton.tsx
+import Image from 'next/image';
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 
 const MetaMaskButton = () => {
   const [error, setError] = useState('');
+  const router = useRouter();
 
   const handleSignIn = async () => {
     setError(''); 
@@ -10,7 +13,8 @@ const MetaMaskButton = () => {
       if (window.ethereum) {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         console.log('Connected with account:', accounts[0]);
-        
+        // Redirect to the game page after successful connection
+        router.push('/game');
       } else {
         setError('MetaMask is not installed. Please install it to use this app.');
       }
@@ -23,7 +27,7 @@ const MetaMaskButton = () => {
   return (
     <div>
       <button onClick={handleSignIn} className="bg-orange-400 p-4 rounded-lg flex items-center text-slate-900 hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50">
-        <Image src="/images/metamask.jpg" alt="MetaMask" width={40} height={40} fill={false} />
+        <Image src="/images/metamask.jpg" alt="MetaMask" width={40} height={40} unoptimized />
         <span className="ml-2">Sign In to MetaMask</span>
       </button>
       {error && <p className="text-red-500 mt-2">{error}</p>}

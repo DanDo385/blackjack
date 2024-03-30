@@ -1,3 +1,5 @@
+//pages/index.jsx
+
 import Head from 'next/head';
 import MetaMaskButton from '../components/MetaMaskButton';
 
