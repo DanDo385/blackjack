@@ -15,7 +15,6 @@ contract Blackjack {
     constructor() {
         initializeDeck();
         shuffleDeck();
-        dealHands(); // Deal hands upon contract deployment
     }
 
     function initializeDeck() public {
