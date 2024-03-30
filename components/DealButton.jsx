@@ -1,4 +1,4 @@
-import React from 'react';
+// DealButton.jsx
 import { ethers } from 'ethers';
 import BlackjackABI from '../constants/BlackjackABI.json';
 
@@ -6,31 +6,29 @@ const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
 const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
   const dealCards = async () => {
-    // Ensure the Ethereum provider (e.g., MetaMask) is available
     if (window.ethereum) {
       try {
-        // Initialize ethers provider and contract
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
-        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI.abi, signer);
+        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
-        // Deal hands via smart contract
-        await blackjackContract.dealHands();
+        await blackjackContract.initializeDeck();
+        await blackjackContract.shuffleDeck();
+        const dealTx = await blackjackContract.dealHands();
+        await dealTx.wait();
 
-        // Retrieve and set dealer and player hands, and card count
         const dealer = await blackjackContract.getDealerHand();
         const player = await blackjackContract.getPlayerHand();
         const count = await blackjackContract.getCardCount();
 
-        // Update React state with the fetched data
         setDealerHand(dealer);
         setPlayerHand(player);
-        setCardCount(count.toNumber()); // Convert BigNumber to number
+        setCardCount(count.toNumber());
       } catch (error) {
-        console.error("Error dealing cards:", error);
+        console.error("DealButton error:", error);
       }
     } else {
-      console.error("Ethereum provider not found. Please install MetaMask.");
+      console.error("Ethereum provider (e.g., MetaMask) not found.");
     }
   };
 
