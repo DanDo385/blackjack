@@ -1,7 +1,7 @@
 //pages/game.jsx
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 import GameBoard from '../components/GameBoard';
+import { ethers } from 'ethers';
 import BlackjackABI from '../constants/BlackjackABI.json';
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
