@@ -1,38 +1,30 @@
 // utils/web3.js
+import Web3 from 'web3';
 
-import { ethers } from 'ethers';
+let web3;
 
-let provider;
-
-// Initializes a provider
-export function initProvider() {
-  // Use window.ethereum which is injected by MetaMask and other Ethereum wallet browser extensions.
-  if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
-    // We're in the browser and MetaMask is running.
-    window.ethereum.request({ method: 'eth_requestAccounts' }); // Request access to account
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-  } else {
-    // We're on the server *OR* the user is not running MetaMask
-    const url = "https://mainnet.infura.io/v3/YOUR_PROJECT_ID"; // Use an Infura node if not connected to MetaMask
-    provider = new ethers.providers.JsonRpcProvider(url);
+export function initWeb3() {
+  if (window.ethereum) {
+    web3 = new Web3(window.ethereum);
+    try {
+      window.ethereum.request({ method: 'eth_requestAccounts' });
+    } catch (error) {
+      console.error("User denied account access");
+    }
   }
-  return provider;
+  else if (window.web3) { // Legacy dapp browsers...
+    web3 = new Web3(window.web3.currentProvider);
+  }
+  else { // If no injected web3 instance is detected, fall back to Ganache
+    const provider = new Web3.providers.HttpProvider('http://localhost:7545');
+    web3 = new Web3(provider);
+  }
+  return web3;
 }
 
-// Fetches the current signer
-export async function getSigner() {
-  if (!provider) {
-    initProvider();
-  }
-  return provider.getSigner();
-}
-
-// Connects to a smart contract
-export function getContract(address, abi) {
-  if (!provider) {
-    initProvider();
-  }
-  const signer = provider.getSigner();
-  const contract = new ethers.Contract(address, abi, signer);
-  return contract;
-}
+export const getContract = async (abi, contractAddress) => {
+  const web3 = initWeb3();
+  const networkId = await web3.eth.net.getId();
+  const deployedNetwork = contractAddress[networkId];
+  return new web3.eth.Contract(abi, deployedNetwork && deployedNetwork.address);
+};

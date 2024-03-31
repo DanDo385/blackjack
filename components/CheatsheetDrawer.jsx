@@ -1,3 +1,5 @@
+"use client"
+
 // components/CheatsheetDrawer.jsx
 import { useState } from 'react';
 

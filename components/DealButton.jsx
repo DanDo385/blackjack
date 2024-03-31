@@ -1,35 +1,31 @@
 // components/DealButton.jsx
-import Web3 from 'web3';
 import React from 'react';
+import Web3 from 'web3';
 import BlackjackABI from '../constants/BlackjackABI.json';
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
 const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
   const dealCards = async () => {
-    if (window.ethereum) {
+    if (typeof window.ethereum !== 'undefined') {
       try {
-        const web3 = new Web3(window.ethereum);
-        await window.ethereum.enable(); // Request access
-        const accounts = await web3.eth.getAccounts();
-        const blackjackContract = new web3.eth.Contract(BlackjackABI, blackjackContractAddress, {
-          from: accounts[0], // default from address
-          gasPrice: '20000000000' // default gas price in wei, 20 gwei in this case
-        });
+        // Request account access if needed
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-        // Initialize and shuffle the deck
+        // Use window.ethereum as the provider
+        const web3 = new Web3(window.ethereum);
+        const blackjackContract = new web3.eth.Contract(BlackjackABI, blackjackContractAddress);
+
+        // Proceed to deal cards
         await blackjackContract.methods.initializeDeck().send({ from: accounts[0] });
         await blackjackContract.methods.shuffleDeck().send({ from: accounts[0] });
-
-        // Deal hands
         await blackjackContract.methods.dealHands().send({ from: accounts[0] });
 
-        // Fetch the state
+        // Fetch the updated state
         const dealer = await blackjackContract.methods.getDealerHand().call();
         const player = await blackjackContract.methods.getPlayerHand().call();
         const count = await blackjackContract.methods.getCardCount().call();
 
-        // Update state in React component
         setDealerHand(dealer);
         setPlayerHand(player);
         setCardCount(parseInt(count, 10));
@@ -37,7 +33,7 @@ const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
         console.error("DealButton error:", error);
       }
     } else {
-      console.error("Ethereum provider (e.g., MetaMask) not found.");
+      console.error("Ethereum provider not found.");
     }
   };
 

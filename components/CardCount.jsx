@@ -1,3 +1,4 @@
+"use client"
 import React, { useEffect, useState } from 'react';
 import { useWallet } from '../contexts/WalletContext'; // Update with your actual import path
 

@@ -1,3 +1,4 @@
+"use client"
 // components/ActionButtons.jsx
 const ActionButtons = ({ onHit, onStand /*, onDoubleDown, onSplit, onInsurance */, gameState }) => {
   return (
