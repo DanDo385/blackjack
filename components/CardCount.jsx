@@ -1,13 +1,11 @@
-"use client"
-import React, { useEffect, useState } from 'react';
-import { useWallet } from '../contexts/WalletContext'; // Update with your actual import path
+import { useEffect, useState } from 'react';
 
-const CardCount = () => {
-  const [cardCount, setCardCount] = useState(null);
-  const { blackjackContract } = useWallet(); // Adjust based on your context implementation
+const CardCount = ({ blackjackContract }) => {
+  const [cardCount, setCardCount] = useState(0); // Initialize cardCount with a default value
 
   useEffect(() => {
     console.log('Fetching card count...');
+    
     const fetchCardCount = async () => {
       try {
         const count = await blackjackContract.getCardCount();

@@ -1,7 +1,7 @@
 // components/DealButton.jsx
 import React from 'react';
 import Web3 from 'web3';
-import BlackjackABI from '../constants/BlackjackABI.json';
+import BlackjackABI from '../contracts/build/Blackjack.abi';
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
