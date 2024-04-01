@@ -3,35 +3,35 @@
     "version": "0.1.1",
     "private": false,
     "scripts": {
-        "dev": "next dev",
-        "build": "next build",
-        "start": "next start",
-        "test": "hardhat test",
-        "compile": "hardhat compile",
-        "deploy": "hardhat run scripts/deploy.js --network localhost",
-        "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet"
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "test": "hardhat test",
+      "compile": "hardhat compile",
+      "deploy": "hardhat run scripts/deploy.js --network localhost",
+      "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet"
     },
     "dependencies": {
-        "dotenv": "^16.4.5",
-        "ethers": "^6.11.1",
-        "mocha": "^10.3.0",
-        "next": "14.1.0",
-        "react": "^18",
-        "react-dom": "^18",
-        "web3": "^4.7.0"
+      "dotenv": "^16.4.5",
+      "ethers": "5.5.0",
+      "mocha": "^10.3.0",
+      "next": "14.1.0",
+      "react": "^18",
+      "react-dom": "^18",
+      "web3": "^4.7.0"
     },
     "devDependencies": {
-        "@nomicfoundation/hardhat-ethers": "^3.0.5",
-        "@types/react": "18.2.72",
-        "autoprefixer": "^10.0.1",
-        "chai": "4.3.6",
-        "hardhat": "^2.22.2",
-        "postcss": "^8",
-        "tailwindcss": "^3.3.0"
+      "@types/react": "18.2.72",
+      "autoprefixer": "^10.0.1",
+      "chai": "4.3.6",
+      "postcss": "^8",
+      "tailwindcss": "^3.3.0"
     },
     "description": "This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).",
     "main": "postcss.config.js",
     "keywords": [],
     "author": "",
-    "license": "ISC"
-}
+    "license": "ISC",
+    "type": "module"
+  }
+  

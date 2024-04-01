@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // contracts/Blackjack.sol
-pragma solidity 0.8.24;
+pragma solidity 0.8.25;
 
 contract Blackjack {
     string[] private deck;
