@@ -19,16 +19,13 @@ const DealButton = ({ setDealerHand, setPlayerHand }) => {
 
         setIsLoading(true);
 
-        // Clear previous hands
-        setDealerHand([]);
-        setPlayerHand([]);
-
         // Deal new hands
         await blackjackContract.dealHands();
 
         const dealerHand = await blackjackContract.getDealerHand();
         const playerHand = await blackjackContract.getPlayerHand();
 
+        // Clear previous hands and set new ones
         setDealerHand(dealerHand);
         setPlayerHand(playerHand);
 

@@ -39,11 +39,14 @@ contract Blackjack {
     }
 
     function dealHands() public {
+    delete playerHand; // Clear the player's previous hand
+    delete dealerHand; // Clear the dealer's previous hand
         for(int i = 0; i < 2; i++) {
             playerHand.push(dealCard());
             dealerHand.push(dealCard());
         }
     }
+
 
     function dealCard() internal returns (string memory) {
         require(deck.length > 0, "Deck is empty");
