@@ -1,53 +1,35 @@
-import React, { useState } from 'react';
-import { ethers } from 'ethers';
-import BlackjackABI from '../contracts/build/Blackjack.abi.json';
+const dealCards = async () => {
+  try {
+    if (window.ethereum) {
+      // Request account access
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
 
-const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
-const DealButton = ({ setDealerHand, setPlayerHand }) => {
-  const [isLoading, setIsLoading] = useState(false);
+      setIsLoading(true);
 
-  const dealCards = async () => {
-    try {
-      if (window.ethereum) {
-        // Request account access
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
+      // Deal new hands
+      await blackjackContract.dealHands();
 
-        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
+      const dealerHand = await blackjackContract.getDealerHand();
+      const playerHand = await blackjackContract.getPlayerHand();
 
-        setIsLoading(true);
+      // Log the hands
+      console.log('Dealer Hand:', dealerHand);
+      console.log('Player Hand:', playerHand);
 
-        // Deal new hands
-        await blackjackContract.dealHands();
+      // Clear previous hands and set new ones
+      setDealerHand(dealerHand);
+      setPlayerHand(playerHand);
 
-        const dealerHand = await blackjackContract.getDealerHand();
-        const playerHand = await blackjackContract.getPlayerHand();
-
-        // Clear previous hands and set new ones
-        setDealerHand(dealerHand);
-        setPlayerHand(playerHand);
-
-        setIsLoading(false);
-      } else {
-        console.error('MetaMask not found.');
-      }
-    } catch (error) {
-      console.error('DealButton error:', error);
       setIsLoading(false);
+    } else {
+      console.error('MetaMask not found.');
     }
-  };
-
-  return (
-    <button
-      onClick={dealCards}
-      className="deal-button"
-      disabled={isLoading}
-    >
-      {isLoading ? 'Loading...' : 'Deal Cards'}
-    </button>
-  );
+  } catch (error) {
+    console.error('DealButton error:', error);
+    setIsLoading(false);
+  }
 };
-
-export default DealButton;
