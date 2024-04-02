@@ -1,44 +1,24 @@
-"use client"
 // components/ActionButtons.jsx
-const ActionButtons = ({ onHit, onStand /*, onDoubleDown, onSplit, onInsurance */, gameState }) => {
+import React from 'react';
+import { handleHit, handleStand } from '../utils/handleHitStand'; // Adjust the path as needed
+
+const ActionButtons = ({ contractAddress, signer, gameState, updateGame }) => {
   return (
     <div className="action-buttons flex justify-around w-full p-4">
       <button
         className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-        onClick={onHit}
+        onClick={() => handleHit(contractAddress, signer)}
         disabled={!gameState.canHit}
       >
         Hit
       </button>
       <button
         className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-        onClick={onStand}
+        onClick={() => handleStand(contractAddress, signer, updateGame)}
         disabled={!gameState.canStand}
       >
         Stand
       </button>
-      {/* Commenting out the buttons not currently in use */}
-      {/* <button
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        onClick={onDoubleDown}
-        disabled={!gameState.canDoubleDown}
-      >
-        Double Down
-      </button>
-      <button
-        className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-        onClick={onSplit}
-        disabled={!gameState.canSplit}
-      >
-        Split
-      </button>
-      <button
-        className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-        onClick={onInsurance}
-        disabled={!gameState.canInsurance}
-      >
-        Insurance
-      </button> */}
     </div>
   );
 };

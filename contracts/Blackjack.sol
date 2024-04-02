@@ -48,7 +48,7 @@ contract Blackjack {
     }
 
 
-    function dealCard() internal returns (string memory) {
+    function dealCard() public returns (string memory) {
         require(deck.length > 0, "Deck is empty");
         if (deck.length <= INITIAL_DECK_SIZE / 4) {
             shuffleDeck();
