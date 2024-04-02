@@ -1,6 +1,6 @@
 // utils/handleStand.js
 import { ethers } from 'ethers';
-import contractABI from '../path/to/BlackjackABI.json';
+import BlackjackABI from '../contracts/build/Blackjack.abi.json';
 
 export async function handleStand(contractAddress, signer, updateGame) {
     const blackjackContract = new ethers.Contract(contractAddress, contractABI, signer);

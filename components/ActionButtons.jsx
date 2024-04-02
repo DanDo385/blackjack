@@ -1,6 +1,8 @@
 // components/ActionButtons.jsx
 import React from 'react';
-import { handleHit, handleStand } from '../utils/handleHitStand'; // Adjust the path as needed
+import { handleHit } from '../utils/handleHit';
+import { handleStand } from '../utils/handleStand';
+ // Adjust the path as needed
 
 const ActionButtons = ({ contractAddress, signer, gameState, updateGame }) => {
   return (
