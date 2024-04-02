@@ -35,12 +35,12 @@ const GameBoard = ({
         <div className="dealer-hand mb-8">
           <h2 className="text-white text-2xl mb-2">Dealer's Hand:</h2>
           {/* Ensure Hand component can render a list of cards */}
-          <Hand cards={dealerHand} />
+          <Hands cards={dealerHand} />
         </div>
         <div className="player-hand mb-8">
           <h2 className="text-white text-2xl mb-2">Player's Hand:</h2>
           {/* Ensure Hand component can render a list of cards */}
-          <Hand cards={playerHand} />
+          <Hands cards={playerHand} />
         </div>
         {/* ActionButtons for Hit, Stand, etc. */}
         <ActionButtons
