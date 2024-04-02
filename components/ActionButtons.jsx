@@ -1,26 +1,22 @@
 // components/ActionButtons.jsx
-import React from 'react';
-import { handleHit } from '../utils/handleHit';
-import { handleStand } from '../utils/handleStand';
- // Adjust the path as needed
+import { handleHit } from '../utils/handleHit'; // Make sure this import path is correct
 
-const ActionButtons = ({ contractAddress, signer, gameState, updateGame }) => {
+const ActionButtons = ({ contractAddress, signer, playerHand, setPlayerHand, gameState }) => {
+  // This function should be passed down from the parent component or created here
+  const revealDealerSecondCard = () => {
+    // Implement the logic to reveal the dealer's second card
+  };
+
   return (
     <div className="action-buttons flex justify-around w-full p-4">
       <button
         className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-        onClick={() => handleHit(contractAddress, signer)}
+        onClick={() => handleHit(contractAddress, signer, playerHand, setPlayerHand, revealDealerSecondCard)}
         disabled={!gameState.canHit}
       >
         Hit
       </button>
-      <button
-        className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-        onClick={() => handleStand(contractAddress, signer, updateGame)}
-        disabled={!gameState.canStand}
-      >
-        Stand
-      </button>
+      {/* Implement the Stand button and its logic similarly */}
     </div>
   );
 };

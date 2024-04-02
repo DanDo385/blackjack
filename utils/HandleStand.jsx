@@ -1,6 +1,8 @@
 // utils/handleStand.js
 import { ethers } from 'ethers';
-import BlackjackABI from '../contracts/build/Blackjack.abi.json';
+// Correcting the import path based on the provided location of the ABI file
+import contractABI from '../contracts/build/Blackjack.abi.json';
+
 
 export async function handleStand(contractAddress, signer, updateGame) {
     const blackjackContract = new ethers.Contract(contractAddress, contractABI, signer);

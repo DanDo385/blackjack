@@ -1,27 +1,30 @@
-// utils/handleHit.js
+// utils/handleHit.jsx
 import { ethers } from 'ethers';
-import contractABI from '../path/to/BlackjackABI.json';
-import { calculateHandTotal } from './calcHandTotal';
+import contractABI from '../contracts/build/Blackjack.abi.json'; // Make sure this import path is correct
+import { calculateHandTotal } from './calcHandTotal'; // Make sure this import path is correct
 
 export async function handleHit(contractAddress, signer, playerHand, setPlayerHand, revealDealerSecondCard) {
-    const blackjackContract = new ethers.Contract(contractAddress, contractABI, signer);
+  // Make sure you pass the correct contract address
+  const blackjackContract = new ethers.Contract(contractAddress, contractABI, signer);
 
-    try {
-        await blackjackContract.dealCard();
-        const updatedPlayerHand = await blackjackContract.getPlayerHand();
+  try {
+    // Assuming `dealCard` is correctly implemented in the smart contract
+    const tx = await blackjackContract.dealCard();
+    await tx.wait(); // Wait for the transaction to be confirmed
 
-        // Calculate the new total
-        const playerTotal = calculateHandTotal(updatedPlayerHand);
+    // Now fetch the updated hand; you'll need to ensure you have a method to get the hand from your contract
+    const updatedPlayerHand = await blackjackContract.getPlayerHand();
+    
+    // Calculate the new total and check if it's over 21 (bust)
+    const playerTotal = calculateHandTotal(updatedPlayerHand);
+    setPlayerHand(updatedPlayerHand); // Update the state with the new hand
 
-        // Update the player's hand in the state
-        setPlayerHand(updatedPlayerHand);
-
-        if (playerTotal > 21) {
-            // Player busts, reveal dealer's second card and determine winner
-            revealDealerSecondCard(); // This should be implemented to update the game state accordingly
-            console.log('Player busts. Dealer wins.');
-        }
-    } catch (error) {
-        console.error('Error dealing card to player:', error);
+    if (playerTotal > 21) {
+      // Player has busted, so reveal the dealer's second card and end the round
+      revealDealerSecondCard();
+      // Handle end of round logic, such as updating the game state or UI
     }
+  } catch (error) {
+    console.error('Error during the hit process:', error);
+  }
 }
