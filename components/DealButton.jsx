@@ -1,48 +1,50 @@
-//components/DealButton.jsx
-
-"use client"
-
+import React, { useState } from 'react';
 import { ethers } from 'ethers';
-import BlackjackABI from '../contracts/build/Blackjack.abi'; // Check if this import path is correct
+import BlackjackABI from '../contracts/build/Blackjack.abi';
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
 const DealButton = ({ setDealerHand, setPlayerHand }) => {
-  const dealCards = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        // Request account access if needed
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+  const [isLoading, setIsLoading] = useState(false);
 
-        // Use window.ethereum as the provider
+  const dealCards = async () => {
+    try {
+      if (window.ethereum && window.ethereum.isMetaMask) {
+        // Connect to the provider
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
-        
-        console.log("BlackjackABI:", BlackjackABI); // Check if BlackjackABI is correctly defined and imported
-        
+
+        // Create contract instance
         const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
-        // Call the dealHands() function from the smart contract
+        setIsLoading(true);
+        // Call dealHands function
         await blackjackContract.dealHands();
+        setIsLoading(false);
 
-        // Fetch the updated state from the contract
+        // Fetch updated hands from the contract
         const dealerHand = await blackjackContract.getDealerHand();
         const playerHand = await blackjackContract.getPlayerHand();
 
-        // Update the state with the hands returned by the contract
+        // Update state with the hands returned by the contract
         setDealerHand(dealerHand);
         setPlayerHand(playerHand);
-      } catch (error) {
-        console.error("DealButton error:", error);
+      } else {
+        console.error('MetaMask not found.');
       }
-    } else {
-      console.error("Ethereum provider not found.");
+    } catch (error) {
+      console.error('DealButton error:', error);
     }
   };
 
   return (
-    <button onClick={dealCards} className="deal-button">
-      Deal Cards
+    <button
+      onClick={dealCards}
+      className="deal-button"
+      disabled={isLoading}
+    >
+      {isLoading ? 'Loading...' : 'Deal Cards'}
     </button>
   );
 };
