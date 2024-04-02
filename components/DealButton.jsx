@@ -1,7 +1,9 @@
+//components/DealButton.jsx
+
 "use client"
 
 import { ethers } from 'ethers';
-import BlackjackABI from '../contracts/build/Blackjack.abi';
+import BlackjackABI from '../contracts/build/Blackjack.abi'; // Check if this import path is correct
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
@@ -15,6 +17,9 @@ const DealButton = ({ setDealerHand, setPlayerHand }) => {
         // Use window.ethereum as the provider
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
+        
+        console.log("BlackjackABI:", BlackjackABI); // Check if BlackjackABI is correctly defined and imported
+        
         const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
         // Call the dealHands() function from the smart contract
