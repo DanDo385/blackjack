@@ -1,7 +1,7 @@
 // components/GameBoard.jsx
 import React from 'react';
 import DealButton from './DealButton'; // Ensure this is correctly pointing to the location of DealButton
-import Hand from './Hand'; // Placeholder - ensure you have a Hand component
+import Hands from './Hands'; // Placeholder - ensure you have a Hand component
 import ActionButtons from './ActionButtons'; // Placeholder - ensure you have an ActionButtons component
 import CheatsheetDrawer from './CheatsheetDrawer'; // Placeholder - ensure you have a CheatsheetDrawer component
 import CardCount from './CardCount'; // Placeholder - ensure you have a CardCount component

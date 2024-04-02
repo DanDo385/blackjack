@@ -7,7 +7,7 @@ const MetaMaskButton = () => {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleSignIn = async () => {
+  const HandsleSignIn = async () => {
     setError(''); 
     try {
       if (window.ethereum) {
@@ -26,7 +26,7 @@ const MetaMaskButton = () => {
 
   return (
     <div>
-      <button onClick={handleSignIn} className="bg-orange-400 p-4 rounded-lg flex items-center text-slate-900 hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50">
+      <button onClick={HandsleSignIn} className="bg-orange-400 p-4 rounded-lg flex items-center text-slate-900 hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50">
         <Image src="/images/metamask.jpg" alt="MetaMask" width={40} height={40} unoptimized />
         <span className="ml-2">Sign In to MetaMask</span>
       </button>

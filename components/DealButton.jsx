@@ -1,3 +1,5 @@
+"use client"
+
 import { ethers } from 'ethers';
 import BlackjackABI from '../contracts/build/Blackjack.abi';
 
