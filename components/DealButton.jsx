@@ -1,11 +1,9 @@
-// components/DealButton.jsx
-import React from 'react';
-import Web3 from 'web3';
+import { ethers } from 'ethers';
 import BlackjackABI from '../contracts/build/Blackjack.abi';
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
-const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
+const DealButton = ({ setDealerHand, setPlayerHand }) => {
   const dealCards = async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
@@ -13,22 +11,20 @@ const DealButton = ({ setDealerHand, setPlayerHand, setCardCount }) => {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
 
         // Use window.ethereum as the provider
-        const web3 = new Web3(window.ethereum);
-        const blackjackContract = new web3.eth.Contract(BlackjackABI, blackjackContractAddress);
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
-        // Proceed to deal cards
-        await blackjackContract.methods.initializeDeck().send({ from: accounts[0] });
-        await blackjackContract.methods.shuffleDeck().send({ from: accounts[0] });
-        await blackjackContract.methods.dealHands().send({ from: accounts[0] });
+        // Call the dealHands() function from the smart contract
+        await blackjackContract.dealHands();
 
-        // Fetch the updated state
-        const dealer = await blackjackContract.methods.getDealerHand().call();
-        const player = await blackjackContract.methods.getPlayerHand().call();
-        const count = await blackjackContract.methods.getCardCount().call();
+        // Fetch the updated state from the contract
+        const dealerHand = await blackjackContract.getDealerHand();
+        const playerHand = await blackjackContract.getPlayerHand();
 
-        setDealerHand(dealer);
-        setPlayerHand(player);
-        setCardCount(parseInt(count, 10));
+        // Update the state with the hands returned by the contract
+        setDealerHand(dealerHand);
+        setPlayerHand(playerHand);
       } catch (error) {
         console.error("DealButton error:", error);
       }
