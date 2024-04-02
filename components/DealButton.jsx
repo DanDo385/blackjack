@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
-const BlackjackABI = require('../contracts/build/Blackjack.abi');
+import BlackjackABI from '../contracts/build/Blackjack.abi.json';
 
 const blackjackContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
