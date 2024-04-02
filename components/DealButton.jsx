@@ -18,19 +18,27 @@ const DealButton = ({ setDealerHand, setPlayerHand }) => {
         const blackjackContract = new ethers.Contract(blackjackContractAddress, BlackjackABI, signer);
 
         setIsLoading(true);
+
+        // Clear previous hands
+        setDealerHand([]);
+        setPlayerHand([]);
+
+        // Deal new hands
         await blackjackContract.dealHands();
-        setIsLoading(false);
 
         const dealerHand = await blackjackContract.getDealerHand();
         const playerHand = await blackjackContract.getPlayerHand();
 
         setDealerHand(dealerHand);
         setPlayerHand(playerHand);
+
+        setIsLoading(false);
       } else {
         console.error('MetaMask not found.');
       }
     } catch (error) {
       console.error('DealButton error:', error);
+      setIsLoading(false);
     }
   };
 
