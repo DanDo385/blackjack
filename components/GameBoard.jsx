@@ -1,52 +1,33 @@
 // components/GameBoard.jsx
-import React from 'react';
-import DealButton from './DealButton';
+import React, { useContext } from 'react';
+import { GameContext } from '../context/gameContext'; // Adjust the path as necessary
+import DealButton from './Deal';
 import Hands from './Hands';
 import ActionButtons from './ActionButtons';
 import CheatsheetDrawer from './CheatsheetDrawer';
 import CardCount from './CardCount';
 
-const GameBoard = ({
-  dealerHand,
-  playerHand,
-  setDealerHand,
-  setPlayerHand,
-  gameState,
-  gameStarted, // Assuming this is managed outside and passed as a prop
-  onHit,
-  onStand,
-}) => {
+const GameBoard = () => {
+  const { dealerHand, playerHand, dealHands } = useContext(GameContext);
+
+  // You might have functions to trigger dealing hands, hitting, standing, etc., directly here
+  // or utilize the context's functions like dealHands() if it's supposed to start a new game/hand
+
   return (
     <div className="game-board bg-cover bg-center min-h-screen relative" style={{ backgroundImage: "url('/images/boards/eth-board.jpg')" }}>
-      {/* DealButton pinned to the top left corner */}
       <div className="absolute top-0 left-0 m-4">
-        <DealButton 
-          setDealerHand={setDealerHand} 
-          setPlayerHand={setPlayerHand} 
-        />
+        <DealButton onClick={dealHands} /> {/* Assuming DealButton accepts an onClick prop */}
       </div>
-      {/* CardCount doesn't need to be pinned or adjusted in this snippet */}
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="dealer-hand mb-8">
           <h2 className="text-white text-2xl mb-2">Dealer's Hand:</h2>
-          {/* Ensure Hand component can render a list of cards */}
-          {/* hideDealerSecondCard prop controls the visibility of the dealer's second card */}
-          <Hands cards={dealerHand} hideDealerSecondCard={!gameStarted} />
+          <Hands cards={dealerHand} hideDealerSecondCard={true} /> {/* Adjust based on your game state */}
         </div>
         <div className="player-hand mb-8">
           <h2 className="text-white text-2xl mb-2">Player's Hand:</h2>
           <Hands cards={playerHand} />
         </div>
-        {/* ActionButtons for Hit, Stand, etc., assuming you pass handlers for these actions */}
-        <ActionButtons
-          onHit={() => {
-            onHit();
-            // You might include logic here to update the gameStarted state if needed
-          }}
-          onStand={onStand}
-          gameState={gameState}
-        />
-        {/* Drawer or modal for blackjack cheatsheet or help */}
+        <ActionButtons />
         <CheatsheetDrawer />
       </div>
     </div>
