@@ -1,58 +1,58 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useContext, useCallback } from 'react';
+import { CardsContext } from './CardsContext'; // Ensure the path is correct
+import { LogicContext } from './LogicContext'; // Ensure the path is correct
+import { WagerContext } from './WagerContext'; // For handling wagers in actions like Double Down
 
-export const CardsContext = createContext();
+export const ActionContext = createContext();
 
-const NUM_DECKS = 4;
-const SHUFFLE_THRESHOLD = 0.75; // Shuffling when 75% of cards have been used
+const ActionProvider = ({ children }) => {
+  const { dealCard } = useContext(CardsContext);
+  const { playerHand, setPlayerHand, dealerHand, setDealerHand, evaluateHands } = useContext(LogicContext);
+  const { chipCount, setChipCount, wager, setWager } = useContext(WagerContext);
 
-const CardsProvider = ({ children }) => {
-  const [decks, setDecks] = useState([]);
-  const [cardsDrawn, setCardsDrawn] = useState(0);
+  const playerHit = useCallback(() => {
+    const newCard = dealCard();
+    setPlayerHand([...playerHand, newCard]);
+    // Optionally, evaluate hand immediately for busts or auto-stand scenarios
+  }, [playerHand, setPlayerHand, dealCard]);
 
-  useEffect(() => {
-    initializeAndShuffleDecks();
+  const playerStand = useCallback(() => {
+    // Logic for standing could involve triggering the dealer's play and then evaluating hands
+    // This is just a placeholder to illustrate the setup
+    console.log('Player stands.');
+    // Trigger dealer's actions here
+    // evaluateHands();
+  }, [evaluateHands]);
+
+  const playerDoubleDown = useCallback(() => {
+    if (chipCount >= wager) {
+      const newCard = dealCard();
+      setPlayerHand([...playerHand, newCard]);
+      setWager(wager * 2);
+      setChipCount(chipCount - wager); // Double the wager
+      playerStand(); // Usually, a player stands after doubling down
+    } else {
+      alert('Not enough chips to double down.');
+    }
+  }, [playerHand, chipCount, wager, dealCard, playerStand]);
+
+  const playerSplit = useCallback(() => {
+    // Placeholder for split logic
+    console.log('Split to be implemented.');
+    // Split logic involves checking for pairs, splitting hands, and possibly duplicating wagers
+  }, [playerHand, wager]);
+
+  const playerInsurance = useCallback(() => {
+    // Placeholder for insurance logic
+    console.log('Insurance to be implemented.');
+    // Implement insurance logic, typically involving checking dealer's up card for an Ace
   }, []);
 
-  const initializeAndShuffleDecks = () => {
-    let newDecks = [];
-    const suits = ['C', 'D', 'H', 'S'];
-    const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-
-    for (let d = 0; d < NUM_DECKS; d++) {
-      suits.forEach((suit) => {
-        ranks.forEach((rank) => {
-          newDecks.push(`${rank}${suit}`);
-        });
-      });
-    }
-
-    newDecks = shuffle(newDecks);
-    setDecks(newDecks);
-    setCardsDrawn(0);
-  };
-
-  const shuffle = (deck) => {
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
-    return deck;
-  };
-
-  const dealCard = () => {
-    if (cardsDrawn >= decks.length * SHUFFLE_THRESHOLD) {
-      initializeAndShuffleDecks();
-    }
-
-    setCardsDrawn(cardsDrawn + 1);
-    return decks.pop();
-  };
-
   return (
-    <CardsContext.Provider value={{ dealCard }}>
+    <ActionContext.Provider value={{ playerHit, playerStand, playerDoubleDown, playerSplit, playerInsurance }}>
       {children}
-    </CardsContext.Provider>
+    </ActionContext.Provider>
   );
 };
 
-export { CardsProvider };
+export { ActionProvider };
