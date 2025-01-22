@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from game_logic import Game
 
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 game = Game()
@@ -12,8 +13,15 @@ def start():
     return jsonify({
         'playerHand': [{'rank': card.rank, 'suit': card.suit} for card in game.player_hand],
         'dealerHand': [{'rank': card.rank, 'suit': card.suit} for card in game.dealer_hand],
-        'gameState': game.game_state
+        'gameState': game.game_state,
+        'count': game.deck.running_count,
+        'trueCount': game.deck.get_true_count()
     })
+
+@app.route('/api/hit', methods=['POST'])
+def hit():
+    game.hit()
+    return jsonify(game.get_state())
 
 @app.route('/api/stand', methods=['POST'])
 def stand():
@@ -36,10 +44,7 @@ def insurance():
     game.insurance(response)
     return jsonify(game.get_state())
 
-@app.route('/api/hit', methods=['POST'])
-def hit():
-    game.hit()
-    return jsonify(game.get_state())
+
 
 if __name__ == '__main__':
     app.run(debug=True) 

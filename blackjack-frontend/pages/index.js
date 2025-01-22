@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import Button from '../components/Button';
+import ChipSelector from '../components/ChipSelector';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
   const [showInsurancePrompt, setShowInsurancePrompt] = useState(false);
+  const [chips, setChips] = useState(1000);
+  const [betAmount, setBetAmount] = useState(0);
 
   useEffect(() => {
+  
     startGame();
   }, []);
 
@@ -89,47 +93,68 @@ export default function Home() {
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl mb-4">Blackjack Game</h1>
-      <div className="mb-4">
-        <h2>Dealer's Hand</h2>
-        <div className="flex">
-          {gameState?.dealerHand.map((card, index) => (
-            <img
-              key={index}
-              src={`/cards/${card.rank}-${card.suit}.png`}
-              alt={`${card.rank} of ${card.suit}`}
-              className="w-16 h-24"
-            />
-          ))}
+    <div className="min-h-screen bg-green-800 flex justify-center items-center p-8">
+      <div className="bg-green-700 p-8 rounded-lg shadow-xl max-w-4xl w-full">
+        <h1 className="text-3xl mb-6 text-white text-center">Blackjack Game</h1>
+        
+        <div className="mb-6 flex justify-between text-white">
+          <div>
+            <p>Count: {gameState?.count || 0}</p>
+            <p>True Count: {gameState?.trueCount?.toFixed(2) || 0}</p>
+          </div>
+          <ChipSelector 
+            chips={chips} 
+            setChips={setChips}
+            betAmount={betAmount}
+            setBetAmount={setBetAmount}
+          />
         </div>
-      </div>
-      <div className="mb-4">
-        <h2>Your Hand</h2>
-        <div className="flex">
-          {gameState?.playerHand.map((card, index) => (
-            <img
-              key={index}
-              src={`/cards/${card.rank}-${card.suit}.png`}
-              alt={`${card.rank} of ${card.suit}`}
-              className="w-16 h-24"
-            />
-          ))}
+
+        <div className="mb-6">
+          <h2 className="text-xl text-white mb-2">Dealer's Hand</h2>
+          <div className="flex justify-center">
+            {gameState?.dealerHand.map((card, index) => (
+              <img
+                key={index}
+                src={`/cards/${card.rank}-${card.suit}.png`}
+                alt={`${card.rank} of ${card.suit}`}
+                className="w-20 h-30 -ml-4 first:ml-0"
+              />
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="flex gap-2">
-        <Button onClick={hit} variant="success">Hit</Button>
-        <Button onClick={stand} variant="primary">Stand</Button>
-        <Button onClick={split} variant="warning">Split</Button>
-        <Button onClick={doubleDown} variant="danger">Double Down</Button>
-      </div>
-      {showInsurancePrompt && (
-        <div className="mt-4">
-          <p>Dealer is showing an Ace. Would you like to buy Insurance?</p>
-          <Button onClick={() => handleInsuranceResponse('yes')} variant="success">Yes</Button>
-          <Button onClick={() => handleInsuranceResponse('no')} variant="danger">No</Button>
+
+        <div className="mb-6">
+          <h2 className="text-xl text-white mb-2">Your Hand</h2>
+          <div className="flex justify-center">
+            {gameState?.playerHand.map((card, index) => (
+              <img
+                key={index}
+                src={`/cards/${card.rank}-${card.suit}.png`}
+                alt={`${card.rank} of ${card.suit}`}
+                className="w-20 h-30 -ml-4 first:ml-0"
+              />
+            ))}
+          </div>
         </div>
-      )}
+
+        <div className="flex gap-2 justify-center">
+          <Button onClick={hit} variant="success">Hit</Button>
+          <Button onClick={stand} variant="primary">Stand</Button>
+          <Button onClick={split} variant="warning">Split</Button>
+          <Button onClick={doubleDown} variant="danger">Double Down</Button>
+        </div>
+
+        {showInsurancePrompt && (
+          <div className="mt-4 text-center text-white">
+            <p>Dealer is showing an Ace. Would you like to buy Insurance?</p>
+            <div className="flex gap-2 justify-center mt-2">
+              <Button onClick={() => handleInsuranceResponse('yes')} variant="success">Yes</Button>
+              <Button onClick={() => handleInsuranceResponse('no')} variant="danger">No</Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
