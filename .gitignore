@@ -1,5 +1,11 @@
-# Ignore node_modules
+# Python
+env/
+*.pyc
+__pycache__/
+
+# Node.js
 node_modules/
 
-# Ignore .env
-.env
+# OS generated files
+.DS_Store
+Thumbs.db
