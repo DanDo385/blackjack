@@ -1,39 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Button from '../components/Button';
 import ChipSelector from '../components/ChipSelector';
 
 export default function Home() {
-  const [gameState, setGameState] = useState(null);
+  const [gameState, setGameState] = useState({
+    playerHand: [],
+    dealerHand: [
+      { rank: 'BACK', suit: 'BACK' },
+      { rank: 'BACK', suit: 'BACK' }
+    ],
+    count: 0,
+    trueCount: 0,
+    gameState: 'betting'
+  });
   const [showInsurancePrompt, setShowInsurancePrompt] = useState(false);
   const [chips, setChips] = useState(1000);
   const [betAmount, setBetAmount] = useState(0);
-
-  useEffect(() => {
-  
-    startGame();
-  }, []);
-
-  const startGame = async () => {
-    try {
-      const response = await fetch('/api/start', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setGameState(data);
-      checkForInsurance(data);
-    } catch (error) {
-      console.error('Error starting game:', error);
-    }
-  };
+  const [isDealt, setIsDealt] = useState(false);
 
   const checkForInsurance = (data) => {
     if (data.dealerHand[0].rank === 'A') {
@@ -92,6 +75,36 @@ export default function Home() {
     }
   };
 
+  const dealHand = async () => {
+    if (betAmount <= 0) {
+      alert("Please place a bet first!");
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ betAmount })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setGameState(data);
+      setIsDealt(true);
+      setChips(chips - betAmount);
+      checkForInsurance(data);
+    } catch (error) {
+      console.error('Error dealing:', error);
+      alert('Failed to start game. Please make sure the backend server is running.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-green-800 flex justify-center items-center p-8">
       <div className="bg-green-700 p-8 rounded-lg shadow-xl max-w-4xl w-full">
@@ -139,10 +152,16 @@ export default function Home() {
         </div>
 
         <div className="flex gap-2 justify-center">
-          <Button onClick={hit} variant="success">Hit</Button>
-          <Button onClick={stand} variant="primary">Stand</Button>
-          <Button onClick={split} variant="warning">Split</Button>
-          <Button onClick={doubleDown} variant="danger">Double Down</Button>
+          {!isDealt ? (
+            <Button onClick={dealHand} variant="primary">Deal</Button>
+          ) : (
+            <>
+              <Button onClick={hit} variant="success">Hit</Button>
+              <Button onClick={stand} variant="primary">Stand</Button>
+              <Button onClick={split} variant="warning">Split</Button>
+              <Button onClick={doubleDown} variant="danger">Double Down</Button>
+            </>
+          )}
         </div>
 
         {showInsurancePrompt && (

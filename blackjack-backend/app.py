@@ -9,23 +9,22 @@ game = Game()
 
 @app.route('/api/start', methods=['POST'])
 def start():
-    game.start_game()
-    return jsonify({
-        'playerHand': [{'rank': card.rank, 'suit': card.suit} for card in game.player_hand],
-        'dealerHand': [{'rank': card.rank, 'suit': card.suit} for card in game.dealer_hand],
-        'gameState': game.game_state,
-        'count': game.deck.running_count,
-        'trueCount': game.deck.get_true_count()
-    })
+    try:
+        data = request.get_json()
+        bet_amount = data.get('betAmount', 0)
+        game.start_game(bet_amount)
+        return jsonify(game.get_state())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/hit', methods=['POST'])
 def hit():
-    game.hit()
+    game.player_hit()
     return jsonify(game.get_state())
 
 @app.route('/api/stand', methods=['POST'])
 def stand():
-    game.stand()
+    game.player_stand()
     return jsonify(game.get_state())
 
 @app.route('/api/split', methods=['POST'])
@@ -47,4 +46,4 @@ def insurance():
 
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True, port=5000) 

@@ -7,14 +7,34 @@ class Game:
         self.deck = Deck()
         self.player_hand = []
         self.dealer_hand = []
-        self.game_state = 'betting'  # or 'dealing', 'player_turn', 'dealer_turn', 'resolution'
-        self.player_split_hands = []  # To handle split hands
+        self.game_state = 'betting'
+        self.player_split_hands = []
+        self.current_bet = 0
 
-    def start_game(self):
+    def start_game(self, bet_amount):
+        self.current_bet = bet_amount
         self.deck.shuffle()
-        self.player_hand = [self.deck.deal(), self.deck.deal()]
+        self.player_hand = [self.deck.deal()]
         self.dealer_hand = [self.deck.deal(), self.deck.deal()]
         self.game_state = 'player_turn'
+
+    def get_state(self):
+        dealer_cards = [
+            {'rank': self.dealer_hand[0].rank, 'suit': self.dealer_hand[0].suit},
+            {'rank': 'BACK', 'suit': 'BACK'}
+        ] if len(self.dealer_hand) > 1 else [
+            {'rank': 'BACK', 'suit': 'BACK'},
+            {'rank': 'BACK', 'suit': 'BACK'}
+        ]
+        
+        return {
+            'playerHand': [{'rank': card.rank, 'suit': card.suit} for card in self.player_hand],
+            'dealerHand': dealer_cards,
+            'gameState': self.game_state,
+            'count': self.deck.running_count,
+            'trueCount': self.deck.get_true_count(),
+            'currentBet': self.current_bet
+        }
 
     def player_hit(self):
         if self.game_state == 'player_turn':

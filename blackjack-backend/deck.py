@@ -5,8 +5,11 @@ import random
 class Card:
     suits = ['C', 'D', 'H', 'S']  # Clubs, Diamonds, Hearts, Spades
     ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-    values = {'2': 2, '3': 3, '4': 4, '5': 4, '6': 4, '7': 3, '8': 2, '9': 1, '10': 0,
-              'J': 0, 'Q': 0, 'K': 0, 'A': -1}  # Hi-Lo card counting values
+    values = {
+        '2': 1, '3': 1, '4': 1, '5': 1, '6': 1,
+        '7': 0, '8': 0, '9': 0,
+        '10': -1, 'J': -1, 'Q': -1, 'K': -1, 'A': -1
+    }  # Hi-Lo card counting values
 
     def __init__(self, rank, suit):
         if rank in self.ranks and suit in self.suits:
