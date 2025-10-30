@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dramatic card-slot outline + deal animation */
+.slot {
+  border: 3px solid transparent;
+  border-radius: 12px;
+  transition: border-color 120ms ease;
+}
+.slot.next {
+  animation: glow 250ms ease-in-out infinite alternate;
+  border-color: #22c55e;
+}
+@keyframes glow {
+  from { box-shadow: 0 0 4px rgba(34,197,94,0.6); }
+  to   { box-shadow: 0 0 14px rgba(34,197,94,0.95); }
+}
+
+/* Make cards LARGE and crisp */
+.card {
+  width: clamp(120px, 18vw, 220px);
+  height: auto;
+  filter: drop-shadow(0 12px 14px rgba(0,0,0,0.35));
+  border-radius: 10px;
+}
+
+
