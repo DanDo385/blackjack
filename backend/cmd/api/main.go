@@ -1,33 +1,43 @@
 package main
 
 import (
-  "log"
-  "net/http"
-  "time"
+	"log"
+	"net/http"
+	"time"
 
-  "github.com/go-chi/chi/v5"
-  "github.com/go-chi/chi/v5/middleware"
-  "github.com/yourname/blackjack-yolo/internal/handlers"
+	"github.com/DanDo385/blackjack/backend/internal/handlers"
+	"github.com/DanDo385/blackjack/backend/internal/storage"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
-  r := chi.NewRouter()
-  r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
-  r.Use(middleware.Timeout(30 * time.Second))
+	// Initialize databases
+	if err := storage.InitPostgres(); err != nil {
+		log.Fatalf("Failed to init postgres: %v", err)
+	}
+	defer storage.ClosePostgres()
 
-  // Engine / Game
-  r.Get("/api/engine/state", handlers.GetEngineState)
-  r.Post("/api/engine/bet", handlers.PostBet)
+	if err := storage.InitRedis(); err != nil {
+		log.Fatalf("Failed to init redis: %v", err)
+	}
+	defer storage.CloseRedis()
 
-  // Treasury
-  r.Get("/api/treasury/overview", handlers.GetTreasuryOverview)
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
+	r.Use(middleware.Timeout(30 * time.Second))
 
-  // User
-  r.Get("/api/user/summary", handlers.GetUserSummary)
-  r.Get("/api/user/hands", handlers.GetUserHands)
+	// Engine / Game
+	r.Get("/api/engine/state", handlers.GetEngineState)
+	r.Post("/api/engine/bet", handlers.PostBet)
 
-  log.Println("dev api on :8080")
-  http.ListenAndServe(":8080", r)
+	// Treasury
+	r.Get("/api/treasury/overview", handlers.GetTreasuryOverview)
+
+	// User
+	r.Get("/api/user/summary", handlers.GetUserSummary)
+	r.Get("/api/user/hands", handlers.GetUserHands)
+
+	log.Println("dev api on :8080")
+	http.ListenAndServe(":8080", r)
 }
-
-

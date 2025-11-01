@@ -4,15 +4,25 @@ import RetroScoreboard from './RetroScoreboard'
 import BetControls from './BetControls'
 import { useStore } from '@/lib/store'
 import { useEffect, useState } from 'react'
+import { useGameOutcomes, BetAgainHandler } from '@/lib/gameOutcomes'
 
 export default function TableCanvas(){
   const { trueCount, shoePct, anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax } = useStore()
   const [nextIdx, setNextIdx] = useState(0) // 0..3 for 4 card slots
 
+  // Track game outcomes for win/loss alerts
+  useGameOutcomes()
+
   useEffect(()=>{
     const id = setInterval(()=> setNextIdx(n => (n+1)%4), 250)
     return ()=>clearInterval(id)
   },[])
+
+  const handleDeal = () => {
+    // This would trigger the deal action - for now just a placeholder
+    // In real implementation, this would call the backend to start a new hand
+    console.log('Deal button triggered')
+  }
 
   const dealer = ['/cards/10-H.png','/cards/A-S.png']
   const player = ['/cards/9-C.png','/cards/7-D.png']
@@ -25,6 +35,7 @@ export default function TableCanvas(){
 
   return (
     <div className="max-w-6xl mx-auto">
+      <BetAgainHandler onDeal={handleDeal} />
       <RetroScoreboard trueCount={trueCount} shoePct={shoePct} />
 
       <div className="rounded-2xl overflow-hidden border border-neutral-800">
