@@ -3,7 +3,7 @@
 import { Toaster } from 'react-hot-toast'
 import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
-import { showWalletConnectedAlert } from '@/lib/alerts'
+import { showWalletConnectedAlert } from '@/lib/alerts.ts'
 
 /**
  * AlertBus - Component-level alert management
@@ -12,7 +12,7 @@ import { showWalletConnectedAlert } from '@/lib/alerts'
  * - Rendering the toast notification container
  * - Detecting wallet connection state changes and triggering alerts
  *
- * All alert display logic is in @/lib/alerts.tsx
+ * All alert display logic is in @/lib/alerts.ts
  */
 export function AlertBus() {
   const { address, isConnected } = useAccount()

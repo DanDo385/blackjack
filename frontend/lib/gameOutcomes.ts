@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
-import { showWinAlert, showLossAlert, setBetAgainCallback, showShuffledAlert } from '@/lib/alerts'
+import { showWinAlert, showLossAlert, setBetAgainCallback, showShuffleAlert } from '@/lib/alerts.ts'
 import { useStore } from '@/lib/store'
 import { getEngineState } from '@/lib/api'
 
@@ -133,7 +133,7 @@ export function useShuffleAlerts() {
     if (prevShoePctRef.current !== null) {
       // Detect when shoe percentage drops significantly, indicating a shuffle
       if (prevShoePctRef.current > 75 && shoePct < prevShoePctRef.current) {
-        showShuffledAlert()
+        showShuffleAlert()
       }
     }
     prevShoePctRef.current = shoePct

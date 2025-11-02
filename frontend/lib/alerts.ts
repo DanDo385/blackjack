@@ -1,10 +1,9 @@
-import toast from 'react-hot-toast'
-import React from 'react'
-import { BetAgainPrompt } from '@/components/BetAgainPrompt'
+import toast from 'react-hot-toast';
+import { showBetAgainPrompt } from '@/components/Toasts';
 
-// ============================================================================
+// ============================================================================ 
 // Constants
-// ============================================================================
+// ============================================================================ 
 
 const BLACKJACK_FACTS = [
   'The house edge in blackjack is typically around 0.5% with perfect basic strategy, making it one of the best casino games for players!',
@@ -24,16 +23,16 @@ const BLACKJACK_FACTS = [
   "The Martingale betting system (doubling after losses) is mathematically flawed - it doesn't change the house edge, just the variance.",
 ]
 
-// ============================================================================
+// ============================================================================ 
 // Type Definitions
-// ============================================================================
+// ============================================================================ 
 
-export type AlertType =
-  | 'wallet_connected'
-  | 'tokens_brought_to_table'
-  | 'win'
-  | 'loss'
-  | 'cash_out'
+export type AlertType = 
+  | 'wallet_connected' 
+  | 'tokens_brought_to_table' 
+  | 'win' 
+  | 'loss' 
+  | 'cash_out' 
   | 'shuffling'
 
 export type WinLossAlertData = {
@@ -48,9 +47,9 @@ export type TokensBroughtData = {
   token: string
 }
 
-// ============================================================================
+// ============================================================================ 
 // Callback Management (for bet-again functionality)
-// ============================================================================
+// ============================================================================ 
 
 type BetAgainCallback = (confirmed: boolean) => void
 let betAgainCallback: BetAgainCallback | null = null
@@ -63,46 +62,18 @@ export function clearBetAgainCallback() {
   betAgainCallback = null
 }
 
-// ============================================================================
+// ============================================================================ 
 // Utility Functions
-// ============================================================================
+// ============================================================================ 
 
 const formatAmount = (amount: number, token: string) =>
   `${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token}`
 
 const randomFact = () => BLACKJACK_FACTS[Math.floor(Math.random() * BLACKJACK_FACTS.length)]
 
-const showBetAgainPrompt = ({
-  message,
-  onConfirm,
-  icon,
-}: {
-  message: string
-  onConfirm: () => void
-  icon: string
-}) =>
-  toast(
-    (t: any) =>
-      React.createElement(BetAgainPrompt, {
-        toastId: t.id,
-        message,
-        onConfirm: () => {
-          onConfirm()
-          betAgainCallback?.(true)
-        },
-        onCancel: () => {
-          betAgainCallback?.(false)
-        },
-      }),
-    {
-      duration: 10_000,
-      icon,
-    }
-  )
-
-// ============================================================================
+// ============================================================================ 
 // Alert Display Functions
-// ============================================================================
+// ============================================================================ 
 
 export function showWalletConnectedAlert(address: string) {
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
@@ -123,7 +94,7 @@ export function showWinAlert(data: WinLossAlertData, onBetAgain: () => void) {
   const message = `🎉 YOU WIN! 🎉\nYou won ${formatAmount(data.amount, data.token)}!`
 
   if (data.canBetAgain && data.lastBetAmount) {
-    showBetAgainPrompt({ message, onConfirm: onBetAgain, icon: '🎊' })
+    showBetAgainPrompt({ message, onConfirm: onBetAgain, icon: '🎊', betAgainCallback });
     return
   }
 
@@ -137,7 +108,7 @@ export function showLossAlert(data: WinLossAlertData, onBetAgain: () => void) {
   const message = `💔 You lost ${formatAmount(data.amount, data.token)}`
 
   if (data.canBetAgain && data.lastBetAmount) {
-    showBetAgainPrompt({ message, onConfirm: onBetAgain, icon: '😔' })
+    showBetAgainPrompt({ message, onConfirm: onBetAgain, icon: '😔', betAgainCallback });
     return
   }
 
@@ -161,7 +132,7 @@ export function showShufflingAlert() {
   })
 }
 
-export function showShuffledAlert() {
+export function showShuffleAlert() {
   toast.success('Deck has been shuffled! 🃏', {
     duration: 4_000,
     icon: '🎲',
