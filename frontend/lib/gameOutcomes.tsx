@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
-import { showWinAlert, showLossAlert, showCashOutAlert, setBetAgainCallback } from '@/lib/alerts'
+import { showWinAlert, showLossAlert, showCashOutAlert, setBetAgainCallback, showShuffleAlert } from '@/lib/alerts'
 import { useStore } from '@/lib/store'
+import { getEngineState } from '@/lib/api'
 
 // Hook to track game outcomes (wins/losses) and cash outs
 export function useGameOutcomes() {
@@ -101,6 +102,7 @@ export function useGameOutcomes() {
     const interval = setInterval(() => {
       checkOutcomes()
       checkCashOut()
+      getEngineState().then(state => useStore.setState(state))
     }, 2000)
     
     return () => clearInterval(interval)
@@ -129,3 +131,18 @@ export function triggerCashOutAlert(amount: number, token: string) {
   showCashOutAlert(amount, token)
 }
 
+// Hook to track deck shuffles
+export function useShuffleAlerts() {
+  const { shoePct } = useStore();
+  const prevShoePctRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prevShoePctRef.current !== null) {
+      // Detect when shoe percentage drops significantly, indicating a shuffle
+      if (prevShoePctRef.current > 75 && shoePct < prevShoePctRef.current) {
+        showShuffleAlert();
+      }
+    }
+    prevShoePctRef.current = shoePct;
+  }, [shoePct]);
+}

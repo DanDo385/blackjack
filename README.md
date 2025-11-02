@@ -18,6 +18,7 @@ Before starting, ensure you have the following installed:
 
 - **Go** 1.24+ ([Install](https://go.dev/dl/))
 - **Node.js** 18+ and **pnpm** ([Install Node](https://nodejs.org/), then `npm install -g pnpm`)
+- **Docker** (Docker Desktop or Colima + Docker CLI) ([Install Docker Desktop](https://www.docker.com/products/docker-desktop/), [Install Colima](https://github.com/abiosoft/colima))
 - **PostgreSQL** 15+ ([Install](https://www.postgresql.org/download/))
 - **Redis** ([Install](https://redis.io/docs/getting-started/installation/))
 - **Foundry** (Foundryup) ([Install](https://book.getfoundry.sh/getting-started/installation))
@@ -54,6 +55,33 @@ foundryup
 ## Local Development Setup Guide
 
 This guide walks you through setting up the complete stack locally, starting with the local blockchain, then databases, backend, and finally the frontend.
+
+### 🚀 Quick Start (one command)
+
+If you have Docker, Go, Foundry, and Node installed, you can spin up the complete stack with a single command:
+
+```bash
+make dev
+```
+
+This script will:
+
+- Launch PostgreSQL 17 and Redis via Docker Compose
+- Run database migrations
+- Boot the Go API server
+- Start a local Anvil chain, compile, and deploy the contracts
+- Update `frontend/lib/contracts.ts` with the freshly deployed addresses
+- Start the Next.js dev server at `http://localhost:3000`
+
+> Ensure the Docker daemon is running before you run `make dev`. Open Docker Desktop or run `colima start` (the script will try to launch Colima automatically if it is installed, but it cannot start Docker Desktop for you).
+
+> Press `Ctrl+C` in the terminal to stop everything. The command automatically tears down the Docker containers and background processes.
+
+If you prefer not to use `make`, execute the underlying script directly:
+
+```bash
+./scripts/dev.sh
+```
 
 ### Step 1: Clone and Install Dependencies
 

@@ -9,9 +9,15 @@ import (
 	"github.com/DanDo385/blackjack/backend/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env file from project root (optional, will use defaults if not found)
+	// When running from backend/ directory, .env is at ../.env
+	_ = godotenv.Load("../.env")
+	// Fallback to current directory if .env is in backend/
+	_ = godotenv.Load()
 	// Initialize databases
 	if err := storage.InitPostgres(); err != nil {
 		log.Fatalf("Failed to init postgres: %v", err)

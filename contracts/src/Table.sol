@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {VRFConsumerBaseV2} from "@chainlink/src/v0.8/vrf/VRFConsumerBaseV2.sol";
+import {VRFCoordinatorV2Interface} from "@chainlink/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
 import {ITable} from "./interfaces/ITable.sol";
 
-contract Table is ITable {
+contract Table is ITable, VRFConsumerBaseV2 {
   Rules public rules;
   address public owner;
   address public treasury;
@@ -19,17 +21,42 @@ contract Table is ITable {
   uint256 public tableMin;         // in token units (example rails)
   uint256 public tableMax;
 
+  // VRF Configuration
+  VRFCoordinatorV2Interface public immutable vrfCoordinator;
+  bytes32 public immutable keyHash;
+  uint64 public immutable subscriptionId;
+  uint32 public immutable callbackGasLimit;
+  uint16 public constant REQUEST_CONFIRMATIONS = 3;
+  uint32 public constant NUM_WORDS = 1;
+
+  // Mapping VRF requestId to handId
+  mapping(uint256 => uint256) public requestIdToHandId;
+
   struct PState { uint256 anchor; uint256 lastBet; uint8 playedCount10; uint8 totalCount10; }
   mapping(address => PState) public pstate;
 
   struct Hand { address player; address token; uint256 amount; uint256 usdcRef; bool settled; bytes32 seed; }
   mapping(uint256 => Hand) public hands; uint256 public nextHandId;
 
-  constructor(Rules memory r, address _treasury, address _owner, bool premier) {
+  constructor(
+    Rules memory r,
+    address _treasury,
+    address _owner,
+    bool premier,
+    address _vrfCoordinator,
+    bytes32 _keyHash,
+    uint64 _subscriptionId,
+    uint32 _callbackGasLimit
+  ) VRFConsumerBaseV2(_vrfCoordinator) {
     rules = r; treasury = _treasury; owner = _owner;
     shoeId = 1; reshuffleAt = r.decks * 52 * r.penetrationBps / 10000;
     if (premier) { spreadNum = 5; growthCapBps = 4000; } else { spreadNum = 4; growthCapBps = 3300; }
     stepBps = 500; tableMin = 1e6; tableMax = 1_000_000e6; // demo values
+    
+    vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
+    keyHash = _keyHash;
+    subscriptionId = _subscriptionId;
+    callbackGasLimit = _callbackGasLimit;
   }
 
   function _bounds(address u) internal view returns (uint256 minV, uint256 maxV) {
@@ -63,10 +90,43 @@ contract Table is ITable {
 
     handId = nextHandId++;
     hands[handId] = Hand({player: msg.sender, token: token, amount: amount, usdcRef: usdcRef, settled:false, seed:bytes32(0)});
-    emit HandStarted(handId, msg.sender, token, amount, bytes32(0));
+    
+    // Request randomness from Chainlink VRF
+    uint256 requestId = vrfCoordinator.requestRandomWords(
+      keyHash,
+      subscriptionId,
+      REQUEST_CONFIRMATIONS,
+      callbackGasLimit,
+      NUM_WORDS
+    );
+    
+    // Map requestId to handId so we can identify which hand this randomness is for
+    requestIdToHandId[requestId] = handId;
+    
+    emit HandStarted(handId, msg.sender, token, amount, bytes32(requestId));
   }
 
+  /**
+   * @notice Callback function used by VRF Coordinator
+   * @param requestId The VRF request ID
+   * @param randomWords The array of random values returned by VRF
+   */
+  function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+    uint256 handId = requestIdToHandId[requestId];
+    require(hands[handId].player != address(0), "HandNotFound");
+    require(hands[handId].seed == bytes32(0), "SeedAlreadySet");
+    
+    // Convert random word to bytes32 seed
+    bytes32 seed = bytes32(randomWords[0]);
+    hands[handId].seed = seed;
+    
+    emit RandomFulfilled(handId, seed);
+  }
+
+  // Deprecated: Keep for backward compatibility, but VRF will call fulfillRandomWords instead
   function fulfillRandomness(uint256 handId, bytes32 seed) external {
+    // This function is kept for backward compatibility but should not be used
+    // VRF will automatically call fulfillRandomWords via the coordinator
     require(hands[handId].player != address(0));
     require(hands[handId].seed==bytes32(0));
     hands[handId].seed = seed;

@@ -4,7 +4,7 @@ import RetroScoreboard from './RetroScoreboard'
 import BetControls from './BetControls'
 import { useStore } from '@/lib/store'
 import { useEffect, useState } from 'react'
-import { useGameOutcomes, BetAgainHandler } from '@/lib/gameOutcomes'
+import { useGameOutcomes, BetAgainHandler, useShuffleAlerts } from '@/lib/gameOutcomes'
 
 export default function TableCanvas(){
   const { trueCount, shoePct, anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax } = useStore()
@@ -12,6 +12,7 @@ export default function TableCanvas(){
 
   // Track game outcomes for win/loss alerts
   useGameOutcomes()
+  useShuffleAlerts()
 
   useEffect(()=>{
     const id = setInterval(()=> setNextIdx(n => (n+1)%4), 250)
