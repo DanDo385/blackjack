@@ -9,6 +9,7 @@
     "lint": "echo 'no lint configured'"
   },
   "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.9",
     "@tanstack/react-query": "^5.56.2",
     "autoprefixer": "^10.4.20",
     "clsx": "^2.1.1",

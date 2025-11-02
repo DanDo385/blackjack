@@ -2,27 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dramatic card-slot outline + deal animation */
-.slot {
-  border: 3px solid transparent;
-  border-radius: 12px;
-  transition: border-color 120ms ease;
-}
-.slot.next {
-  animation: glow 250ms ease-in-out infinite alternate;
-  border-color: #22c55e;
-}
-@keyframes glow {
-  from { box-shadow: 0 0 4px rgba(34,197,94,0.6); }
-  to   { box-shadow: 0 0 14px rgba(34,197,94,0.95); }
+/* Card styling - clean drop shadow, no focus/selection glow */
+.card {
+  width: clamp(100px, 15vw, 180px);
+  height: auto;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+  border-radius: 8px;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+  box-shadow: none !important;
+  border: none;
 }
 
-/* Make cards LARGE and crisp */
-.card {
-  width: clamp(120px, 18vw, 220px);
-  height: auto;
-  filter: drop-shadow(0 12px 14px rgba(0,0,0,0.35));
-  border-radius: 10px;
+/* Explicitly disable focus/selection styles */
+.card:focus,
+.card:focus-visible,
+.card:active {
+  outline: none;
+  box-shadow: none !important;
+  border: none;
 }
 
 

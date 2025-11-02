@@ -1,6 +1,8 @@
-'use client'
-
 import toast from 'react-hot-toast'
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const BLACKJACK_FACTS = [
   'The house edge in blackjack is typically around 0.5% with perfect basic strategy, making it one of the best casino games for players!',
@@ -20,12 +22,17 @@ const BLACKJACK_FACTS = [
   "The Martingale betting system (doubling after losses) is mathematically flawed - it doesn't change the house edge, just the variance.",
 ]
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
 export type AlertType =
   | 'wallet_connected'
   | 'tokens_brought_to_table'
   | 'win'
   | 'loss'
   | 'cash_out'
+  | 'shuffling'
 
 export type WinLossAlertData = {
   amount: number
@@ -39,8 +46,11 @@ export type TokensBroughtData = {
   token: string
 }
 
-type BetAgainCallback = (confirmed: boolean) => void
+// ============================================================================
+// Callback Management (for bet-again functionality)
+// ============================================================================
 
+type BetAgainCallback = (confirmed: boolean) => void
 let betAgainCallback: BetAgainCallback | null = null
 
 export function setBetAgainCallback(callback: BetAgainCallback) {
@@ -50,6 +60,10 @@ export function setBetAgainCallback(callback: BetAgainCallback) {
 export function clearBetAgainCallback() {
   betAgainCallback = null
 }
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
 
 const formatAmount = (amount: number, token: string) =>
   `${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token}`
@@ -66,7 +80,7 @@ const showBetAgainPrompt = ({
   icon: string
 }) =>
   toast(
-    (t) => (
+    (t: any) => (
       <div className="flex flex-col gap-2">
         <div>{message}</div>
         <div className="text-sm">Bet the same amount again?</div>
@@ -98,6 +112,10 @@ const showBetAgainPrompt = ({
       icon,
     }
   )
+
+// ============================================================================
+// Alert Display Functions
+// ============================================================================
 
 export function showWalletConnectedAlert(address: string) {
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
@@ -149,9 +167,25 @@ export function showCashOutAlert(amount: number, token: string) {
   })
 }
 
-export function showShuffleAlert() {
+export function showShufflingAlert() {
+  toast.loading('Deck is being shuffled... 🃏', {
+    duration: 3_000,
+    icon: '🔄',
+  })
+}
+
+export function showShuffledAlert() {
   toast.success('Deck has been shuffled! 🃏', {
     duration: 4_000,
     icon: '🎲',
   })
 }
+
+/**
+ * Trigger a cash out alert
+ * Can be called manually (from button click) or from withdrawal detection
+ */
+export function triggerCashOutAlert(amount: number, token: string) {
+  showCashOutAlert(amount, token)
+}
+

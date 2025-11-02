@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// Note: In production, import from @chainlink contracts
+// For now, we'll use a simplified interface that matches the required functions
+// Import VRFConsumerBaseV2 from chainlink-brownie-contracts when submodule is initialized
 import {VRFConsumerBaseV2} from "@chainlink/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import {VRFCoordinatorV2Interface} from "@chainlink/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
 import {ITable} from "./interfaces/ITable.sol";
