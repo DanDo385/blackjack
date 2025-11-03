@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
-import { showWinAlert, showLossAlert, setBetAgainCallback, showShuffleAlert } from '@/lib/alerts.ts'
-import { useStore } from '@/lib/store'
+import { showWinAlert, showLossAlert, showShuffleAlert } from '@/lib/alerts'
+import { GameState, useStore } from '@/lib/store'
 import { getEngineState } from '@/lib/api'
 
 /**
@@ -112,7 +112,9 @@ export function useGameOutcomes() {
     const interval = setInterval(() => {
       checkOutcomes()
       checkCashOut()
-      getEngineState().then((state) => useStore.setState(state))
+      getEngineState().then((state: Partial<GameState>) =>
+        useStore.setState({ ...state })
+      )
     }, 2000)
 
     return () => clearInterval(interval)

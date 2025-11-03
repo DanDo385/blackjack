@@ -3,13 +3,19 @@ import Navbar from '@/components/Navbar'
 import StatsCards from '@/components/StatsCards'
 import TimeRangeTabs from '@/components/TimeRangeTabs'
 import { useEffect, useState } from 'react'
+import { useAccount } from 'wagmi'
+import { getUserSummary } from '@/lib/api'
 
 export default function Account(){
+  const { address } = useAccount()
   const [data,setData] = useState<any>(null)
+  
   useEffect(()=>{
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/user/summary`)
-      .then(r=>r.json()).then(setData)
-  },[])
+    if (!address) return
+    getUserSummary(address)
+      .then(setData)
+      .catch(err => console.error('Failed to fetch user summary:', err))
+  },[address])
   return (
     <>
       <Navbar />

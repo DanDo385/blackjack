@@ -34,8 +34,8 @@ export default function TableCanvas() {
     console.log('Deal button triggered')
   }
 
-  const dealer = ['/cards/10-H.png', '/cards/A-S.png']
-  const player = ['/cards/9-C.png', '/cards/7-D.png']
+  const dealer = ['/cards/10-H.png', '/cards/back.png']
+  const player = ['/cards/9-C.png']
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -55,56 +55,75 @@ export default function TableCanvas() {
 
         {/* Cards overlay - positioned absolutely on felt */}
         <div className="pointer-events-none absolute inset-0">
-          {/* Dealer card 1 - top-left area */}
-          <div className="absolute" style={{ left: '45%', top: '25%' }}>
-            <Image
-              alt="dealer1"
-              src={dealer[0]}
-              width={120}
-              height={168}
-              className="card"
-              draggable={false}
-              tabIndex={-1}
-            />
+          {/* Dealer cards - two card backs + one face-up card, horizontally aligned */}
+          <div className="absolute flex gap-4" style={{ left: '50%', top: '20%', transform: 'translateX(-50%)' }}>
+            {/* Dealer card back 1 */}
+            <div>
+              <Image
+                alt="dealer back 1"
+                src="/cards/back.png"
+                width={30}
+                height={42}
+                className="card-small"
+                draggable={false}
+                tabIndex={-1}
+              />
+            </div>
+
+            {/* Dealer card back 2 */}
+            <div>
+              <Image
+                alt="dealer back 2"
+                src="/cards/back.png"
+                width={30}
+                height={42}
+                className="card-small"
+                draggable={false}
+                tabIndex={-1}
+              />
+            </div>
+
+            {/* Dealer face-up card */}
+            <div>
+              <Image
+                alt="dealer face-up"
+                src={dealer[0]}
+                width={30}
+                height={42}
+                className="card-small"
+                draggable={false}
+                tabIndex={-1}
+              />
+            </div>
           </div>
 
-          {/* Dealer card 2 - top-left area, rotated slightly */}
-          <div className="absolute" style={{ left: '50%', top: '27%', transform: 'rotate(3deg)' }}>
-            <Image
-              alt="dealer2"
-              src={dealer[1]}
-              width={120}
-              height={168}
-              className="card"
-              draggable={false}
-              tabIndex={-1}
-            />
-          </div>
+          {/* Player cards - one card back + one face-up card, horizontally aligned */}
+          <div className="absolute flex gap-4" style={{ left: '50%', bottom: '25%', transform: 'translateX(-50%)' }}>
+            {/* Player card back */}
+            <div>
+              <Image
+                alt="player back"
+                src="/cards/back.png"
+                width={30}
+                height={42}
+                className="card-small"
+                draggable={false}
+                tabIndex={-1}
+              />
+            </div>
 
-          {/* Player card 1 - bottom-left area */}
-          <div className="absolute" style={{ left: '30%', bottom: '20%' }}>
-            <Image
-              alt="player1"
-              src={player[0]}
-              width={120}
-              height={168}
-              className="card"
-              draggable={false}
-              tabIndex={-1}
-            />
-          </div>
-
-          {/* Player card 2 - bottom-left area, rotated slightly */}
-          <div className="absolute" style={{ left: '35%', bottom: '18%', transform: 'rotate(4deg)' }}>
-            <Image
-              alt="player2"
-              src={player[1]}
-              width={120}
-              height={168}
-              className="card"
-              draggable={false}
-              tabIndex={-1}
-            />
+            {/* Player face-up card */}
+            <div>
+              <Image
+                alt="player face-up"
+                src={player[0]}
+                width={30}
+                height={42}
+                className="card-small"
+                draggable={false}
+                tabIndex={-1}
+              />
+            </div>
           </div>
         </div>
       </div>

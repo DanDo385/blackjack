@@ -8,7 +8,7 @@ import { create } from 'zustand'
  * - Betting parameters: anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax
  * - Raw card counting: cardsDealt, runningCount (for computing true count)
  */
-type GameState = {
+export type GameState = {
   // Display metrics
   trueCount: number
   shoePct: number
@@ -31,7 +31,7 @@ type GameState = {
   resetCounting: () => void
 }
 
-const INITIAL_STATE = {
+const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting'> = {
   // Start with 0% shoe dealt, 0 true count
   trueCount: 0,
   shoePct: 0,

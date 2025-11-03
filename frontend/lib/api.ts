@@ -1,3 +1,5 @@
+import type { GameState } from '@/lib/store'
+
 /**
  * API client with error handling
  *
@@ -9,7 +11,18 @@
  * All requests include proper error handling and logging.
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080'
+// Use relative URLs in browser (proxied via Next.js rewrites) to avoid CORS
+// Use absolute URLs in server-side contexts
+const getBaseUrl = () => {
+  // In browser, use relative URL (proxied via Next.js rewrites)
+  if (typeof window !== 'undefined') {
+    return ''
+  }
+  // Server-side: use absolute URL
+  return process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080'
+}
+
+const BASE_URL = getBaseUrl()
 
 /**
  * Helper to check if response is ok, throw otherwise
@@ -25,7 +38,8 @@ function throwIfNotOk(res: Response) {
  */
 export async function getJSON<T>(path: string): Promise<T> {
   try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const url = `${BASE_URL}${path}`
+    const res = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
@@ -43,7 +57,8 @@ export async function getJSON<T>(path: string): Promise<T> {
  */
 export async function postJSON<T>(path: string, body: any): Promise<T> {
   try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const url = `${BASE_URL}${path}`
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -61,7 +76,8 @@ export async function postJSON<T>(path: string, body: any): Promise<T> {
  */
 export async function putJSON<T>(path: string, body: any): Promise<T> {
   try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const url = `${BASE_URL}${path}`
+    const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -78,9 +94,9 @@ export async function putJSON<T>(path: string, body: any): Promise<T> {
  * Get current engine state
  * Falls back to default state if API is unavailable
  */
-export async function getEngineState() {
+export async function getEngineState(): Promise<Partial<GameState>> {
   try {
-    return await getJSON('/api/engine/state')
+    return await getJSON<Partial<GameState>>('/api/engine/state')
   } catch (error) {
     console.warn('Engine state unavailable, using defaults:', error)
     // Return sensible defaults when backend is down

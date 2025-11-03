@@ -51,11 +51,22 @@ contract Table is ITable, VRFConsumerBaseV2 {
     uint64 _subscriptionId,
     uint32 _callbackGasLimit
   ) VRFConsumerBaseV2(_vrfCoordinator) {
-    rules = r; treasury = _treasury; owner = _owner;
-    shoeId = 1; reshuffleAt = r.decks * 52 * r.penetrationBps / 10000;
-    if (premier) { spreadNum = 5; growthCapBps = 4000; } else { spreadNum = 4; growthCapBps = 3300; }
-    stepBps = 500; tableMin = 1e6; tableMax = 1_000_000e6; // demo values
-    
+    rules = r;
+    treasury = _treasury;
+    owner = _owner;
+    shoeId = 1;
+    reshuffleAt = uint256(r.decks) * 52 * uint256(r.penetrationBps) / 10000;
+    if (premier) {
+      spreadNum = 5;
+      growthCapBps = 4000;
+    } else {
+      spreadNum = 4;
+      growthCapBps = 3300;
+    }
+    stepBps = 500;
+    tableMin = 1e6;
+    tableMax = 1_000_000e6;
+
     vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
     keyHash = _keyHash;
     subscriptionId = _subscriptionId;

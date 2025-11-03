@@ -3,12 +3,14 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/DanDo385/blackjack/backend/internal/handlers"
 	"github.com/DanDo385/blackjack/backend/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -30,6 +32,24 @@ func main() {
 	defer storage.CloseRedis()
 
 	r := chi.NewRouter()
+	
+	// CORS configuration - must be before other middleware
+	allowedOrigin := os.Getenv("FRONTEND_URL")
+	if allowedOrigin == "" {
+		// Default to localhost:3000 for development
+		allowedOrigin = "http://localhost:3000"
+	}
+	
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{allowedOrigin},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not to exceed preflight request cache duration
+		Debug:            false, // Set to true for debugging CORS issues
+	}))
+	
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
 

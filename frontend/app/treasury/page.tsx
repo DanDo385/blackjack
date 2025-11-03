@@ -2,6 +2,7 @@
 import Navbar from '@/components/Navbar'
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { useEffect, useState } from 'react'
+import { getTreasuryOverview } from '@/lib/api'
 
 const COLORS = ['#3b82f6','#22c55e','#eab308','#ef4444','#a855f7']
 
@@ -9,8 +10,9 @@ export default function Treasury(){
   const [data, setData] = useState<any>(null)
 
   useEffect(()=>{
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/treasury/overview`)
-      .then(r=>r.json()).then(setData)
+    getTreasuryOverview()
+      .then(setData)
+      .catch(err => console.error('Failed to fetch treasury overview:', err))
   },[])
 
   const positions = data?.positions || []

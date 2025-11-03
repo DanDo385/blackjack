@@ -15,10 +15,26 @@
   border: none;
 }
 
+/* Smaller card variant - 50% of original size */
+.card-small {
+  width: clamp(50px, 7.5vw, 90px);
+  height: auto;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+  border-radius: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+  box-shadow: none !important;
+  border: none;
+}
+
 /* Explicitly disable focus/selection styles */
 .card:focus,
 .card:focus-visible,
-.card:active {
+.card:active,
+.card-small:focus,
+.card-small:focus-visible,
+.card-small:active {
   outline: none;
   box-shadow: none !important;
   border: none;

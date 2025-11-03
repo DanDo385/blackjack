@@ -1,8 +1,12 @@
 import { http, createConfig } from 'wagmi'
-import { base } from 'wagmi/chains'
+import { base, anvil } from 'wagmi/chains'
+
+const chain = process.env.NEXT_PUBLIC_CHAIN_ID === '31337' ? anvil : base
+const rpcUrl = process.env.NEXT_PUBLIC_RPC_HTTP_URL || 'https://mainnet.base.org'
+
 export const wagmiConfig = createConfig({
-  chains: [base],
-  transports: { [base.id]: http(process.env.NEXT_PUBLIC_RPC_HTTP_URL!) },
+  chains: [chain],
+  transports: { [chain.id]: http(rpcUrl) },
 })
 
 

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Menu } from 'lucide-react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
@@ -14,6 +14,12 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
  */
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch with wallet components
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <div className="w-full flex items-center justify-between px-4 py-3 bg-black text-white sticky top-0 z-50 border-b border-neutral-800">
@@ -24,7 +30,7 @@ export default function Navbar() {
 
       {/* Wallet Connect Button (center-right) */}
       <div className="flex-1 flex justify-center mr-4">
-        <ConnectButton />
+        {mounted ? <ConnectButton /> : <div className="h-10 w-32" />}
       </div>
 
       {/* Menu Button */}

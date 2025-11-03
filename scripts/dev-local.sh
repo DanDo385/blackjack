@@ -18,6 +18,8 @@ cleanup() {
   if [[ -n "$FRONTEND_PID" ]] && ps -p "$FRONTEND_PID" >/dev/null 2>&1; then
     kill "$FRONTEND_PID" >/dev/null 2>&1 || true
   fi
+  # Kill any process using port 3000 (Next.js)
+  lsof -ti:3000 | xargs kill -9 >/dev/null 2>&1 || true
   if [[ -n "$BACKEND_PID" ]] && ps -p "$BACKEND_PID" >/dev/null 2>&1; then
     kill "$BACKEND_PID" >/dev/null 2>&1 || true
   fi
@@ -159,7 +161,7 @@ export PRIVATE_KEY
 
 echo "Compiling and deploying contracts to local Anvil..."
 FACTORY_OUTPUT=$(cd "$ROOT_DIR/contracts" && forge script script/DeployFactory.s.sol --rpc-url "$RPC_URL" --broadcast --private-key "$PRIVATE_KEY" --skip-simulation 2>&1 | sanitize_output)
-FACTORY_ADDR=$(echo "$FACTORY_OUTPUT" | sed -n 's/.*Factory:\s*\(0x[0-9a-fA-F]\{40\}\).*/\1/p' | tail -n1)
+FACTORY_ADDR=$(echo "$FACTORY_OUTPUT" | sed -En 's/.*Factory: *(0x[0-9a-fA-F]{40}).*/\1/p' | tail -n1)
 if [[ -z "$FACTORY_ADDR" ]]; then
   echo "$FACTORY_OUTPUT"
   echo "Failed to retrieve factory address from deployment." >&2
@@ -168,12 +170,47 @@ fi
 
 echo "Factory deployed at $FACTORY_ADDR"
 
+# Wait a moment for Anvil to process the transaction
+sleep 2
+
+echo "Deploying tables..."
+set +e  # Temporarily disable exit on error to capture output
 TABLE_OUTPUT=$(cd "$ROOT_DIR/contracts" && FACTORY_ADDR="$FACTORY_ADDR" TREASURY_ADDR="$TREASURY_ADDR" forge script script/DeployTables.s.sol --rpc-url "$RPC_URL" --broadcast --private-key "$PRIVATE_KEY" --skip-simulation 2>&1 | sanitize_output)
-STD_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | sed -n 's/.*Standard Table:\s*\(0x[0-9a-fA-F]\{40\}\).*/\1/p' | tail -n1)
-PREM_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | sed -n 's/.*Premier Table:\s*\(0x[0-9a-fA-F]\{40\}\).*/\1/p' | tail -n1)
-if [[ -z "$STD_TABLE_ADDR" || -z "$PREM_TABLE_ADDR" ]]; then
+TABLE_EXIT_CODE=$?
+set -e  # Re-enable exit on error
+
+# Debug: show table output
+echo "Table deployment exit code: $TABLE_EXIT_CODE"
+echo "Table deployment output (first 50 lines):"
+echo "$TABLE_OUTPUT" | head -n 50
+
+if [ $TABLE_EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "Table deployment failed. Full output:"
   echo "$TABLE_OUTPUT"
+  echo ""
+  exit 1
+fi
+
+STD_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | sed -En 's/.*Standard Table: *(0x[0-9a-fA-F]{40}).*/\1/p' | tail -n1)
+PREM_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | sed -En 's/.*Premier Table: *(0x[0-9a-fA-F]{40}).*/\1/p' | tail -n1)
+
+# Try alternative patterns (using sed for macOS compatibility)
+if [[ -z "$STD_TABLE_ADDR" ]]; then
+  STD_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | grep -i "standard" | sed -En 's/.*(0x[0-9a-fA-F]{40}).*/\1/p' | head -n1)
+fi
+if [[ -z "$PREM_TABLE_ADDR" ]]; then
+  PREM_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | grep -i "premier" | sed -En 's/.*(0x[0-9a-fA-F]{40}).*/\1/p' | head -n1)
+fi
+
+if [[ -z "$STD_TABLE_ADDR" || -z "$PREM_TABLE_ADDR" ]]; then
+  echo ""
+  echo "Full table deployment output:"
+  echo "$TABLE_OUTPUT"
+  echo ""
   echo "Failed to retrieve table addresses from deployment." >&2
+  echo "STD_TABLE_ADDR: ${STD_TABLE_ADDR:-empty}"
+  echo "PREM_TABLE_ADDR: ${PREM_TABLE_ADDR:-empty}"
   exit 1
 fi
 
@@ -220,6 +257,9 @@ fi
 export NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE:-http://localhost:8080}
 
 echo "Starting Next.js frontend..."
+# Kill any existing process on port 3000
+lsof -ti:3000 | xargs kill -9 >/dev/null 2>&1 || true
+sleep 1
 (cd "$ROOT_DIR/frontend" && npm run dev) &
 FRONTEND_PID=$!
 

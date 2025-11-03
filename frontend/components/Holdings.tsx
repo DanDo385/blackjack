@@ -2,6 +2,7 @@
 
 import { useAccount, useBalance } from 'wagmi'
 import { formatUnits } from 'viem'
+import { useEffect, useState } from 'react'
 
 /**
  * Holdings Component
@@ -20,7 +21,21 @@ import { formatUnits } from 'viem'
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const
 
 export function Holdings() {
+  const [mounted, setMounted] = useState(false)
   const { address, isConnected } = useAccount()
+
+  // Prevent hydration mismatch by only rendering after mount
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="text-sm text-neutral-400 text-center">
+        Loading...
+      </div>
+    )
+  }
 
   // Fetch ETH balance
   const { data: ethBalance } = useBalance({

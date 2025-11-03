@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { useAccount, useBalance } from 'wagmi'
 import { showTokensBroughtToTableAlert } from '@/lib/alerts'
@@ -10,7 +10,7 @@ import { postJSON } from '@/lib/api'
  * BetControls Component
  *
  * Smart betting interface that:
- * - Respects wallet balance (USDC)
+ * - Respects wallet balance (multiple tokens)
  * - Enforces 5% bankroll cap
  * - Enforces game rules (min/max, growth cap)
  * - Warns on dramatic wagers
@@ -22,6 +22,20 @@ import { postJSON } from '@/lib/api'
  */
 
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006' as const
+const WBTC_ADDRESS = '0x053ba9b206e4fb2d196a13f7b5b0a186c0469605' as const
+const USDT_ADDRESS = '0xfde4c96c1286fba3ac151be17a5c5f2db85cbe72' as const
+
+const TOKENS = [
+  { symbol: 'USDC', address: USDC_ADDRESS, decimals: 6 },
+  { symbol: 'ETH', address: undefined, decimals: 18 }, // Native
+  { symbol: 'wETH', address: WETH_ADDRESS, decimals: 18 },
+  { symbol: 'wBTC', address: WBTC_ADDRESS, decimals: 8 },
+  { symbol: 'USDT', address: USDT_ADDRESS, decimals: 6 },
+] as const
+
+type TokenSymbol = typeof TOKENS[number]['symbol']
+
 const BANKROLL_CAP_PCT = 0.05 // 5% max per hand
 const DRAMATIC_WAGER_PCT = 0.5 // Warn if >= 50% of bankroll
 
@@ -42,14 +56,46 @@ export default function BetControls({
   tableMin,
   tableMax,
 }: BetControlsProps) {
+  const [mounted, setMounted] = useState(false)
   const { address, isConnected } = useAccount()
   const [inputValue, setInputValue] = useState<string>('')
+  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('USDC')
 
-  // Fetch USDC balance
+  // Prevent hydration mismatch with wallet hooks
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Fetch balances for all tokens
   const { data: usdcBalance } = useBalance({
     address,
     token: USDC_ADDRESS,
   })
+  const { data: ethBalance } = useBalance({
+    address,
+  })
+  const { data: wethBalance } = useBalance({
+    address,
+    token: WETH_ADDRESS,
+  })
+  const { data: wbtcBalance } = useBalance({
+    address,
+    token: WBTC_ADDRESS,
+  })
+  const { data: usdtBalance } = useBalance({
+    address,
+    token: USDT_ADDRESS,
+  })
+
+  const tokenBalances = useMemo(() => ({
+    USDC: usdcBalance,
+    ETH: ethBalance,
+    wETH: wethBalance,
+    wBTC: wbtcBalance,
+    USDT: usdtBalance,
+  }), [usdcBalance, ethBalance, wethBalance, wbtcBalance, usdtBalance])
+
+  const selectedBalance = tokenBalances[selectedToken]
 
   // Calculate max bet based on rules
   const maxBetByRules = useMemo(() => {
@@ -60,8 +106,8 @@ export default function BetControls({
     const gameMax = Math.min(baseMax, growthMax)
 
     // Wallet balance rule
-    const walletUSDC = usdcBalance ? Number(usdcBalance.formatted) : 0
-    const bankrollMax = Math.floor(walletUSDC * BANKROLL_CAP_PCT)
+    const walletBalance = selectedBalance ? Number(selectedBalance.formatted) : 0
+    const bankrollMax = Math.floor(walletBalance * BANKROLL_CAP_PCT)
 
     // Final max is the minimum of all constraints
     return {
@@ -69,9 +115,9 @@ export default function BetControls({
       gameMax,
       bankrollMax,
       effective: Math.min(gameMax, bankrollMax),
-      walletUSDC,
+      walletBalance,
     }
-  }, [anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax, usdcBalance])
+  }, [anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax, selectedBalance])
 
   const step = Math.max(1, Math.round(anchor * 0.05))
 
@@ -87,7 +133,7 @@ export default function BetControls({
   // Validation checks
   const isConnectedWarning = !isConnected
   const isInsufficientBalance = betAmount > maxBetByRules.effective && betAmount > 0
-  const isDramaticWager = betAmount >= maxBetByRules.walletUSDC * DRAMATIC_WAGER_PCT
+  const isDramaticWager = betAmount >= maxBetByRules.walletBalance * DRAMATIC_WAGER_PCT
   const isValid =
     isConnected &&
     inputValue !== '' &&
@@ -120,7 +166,7 @@ export default function BetControls({
 
     // Warn if dramatic wager
     if (isDramaticWager) {
-      toast(`Dramatic wager: ${finalBet} USDC (≥ 50% bankroll) 🔥`, {
+      toast(`Dramatic wager: ${finalBet} ${selectedToken} (≥ 50% bankroll) 🔥`, {
         icon: '🎭',
         duration: 4000,
       })
@@ -129,13 +175,13 @@ export default function BetControls({
     try {
       await postJSON('/api/engine/bet', {
         amount: finalBet,
-        token: 'USDC',
+        token: selectedToken,
       })
 
       // Show success alert
       showTokensBroughtToTableAlert({
         amount: finalBet,
-        token: 'USDC',
+        token: selectedToken,
       })
 
       // Update store with last bet
@@ -149,6 +195,17 @@ export default function BetControls({
     }
   }
 
+  // Render placeholder during SSR to prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="space-y-4">
+        <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg text-sm text-neutral-400 text-center">
+          Loading...
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {/* Wallet Status */}
@@ -157,24 +214,69 @@ export default function BetControls({
           ⚠️ Connect your wallet to place bets
         </div>
       ) : (
-        <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg text-sm space-y-1">
-          <div className="flex justify-between">
-            <span className="text-neutral-400">USDC Balance</span>
-            <span className="font-mono text-white">
-              {maxBetByRules.walletUSDC.toFixed(2)} USDC
-            </span>
+        <>
+          {/* Multi-token balance display */}
+          <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg text-sm space-y-2">
+            <div className="font-semibold text-neutral-300 mb-2">Your Balances</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-neutral-400">ETH</span>
+                <span className="font-mono text-white">
+                  {(ethBalance ? Number(ethBalance.formatted) : 0).toFixed(4)} ETH
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">wETH</span>
+                <span className="font-mono text-white">
+                  {(wethBalance ? Number(wethBalance.formatted) : 0).toFixed(4)} wETH
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">wBTC</span>
+                <span className="font-mono text-white">
+                  {(wbtcBalance ? Number(wbtcBalance.formatted) : 0).toFixed(6)} wBTC
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">USDC</span>
+                <span className="font-mono text-white">
+                  {(usdcBalance ? Number(usdcBalance.formatted) : 0).toFixed(2)} USDC
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">USDT</span>
+                <span className="font-mono text-white">
+                  {(usdtBalance ? Number(usdtBalance.formatted) : 0).toFixed(2)} USDT
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-neutral-400">Max per hand (5% cap)</span>
-            <span className="font-mono text-white">
-              {maxBetByRules.bankrollMax.toFixed(0)} USDC
-            </span>
+
+          {/* Wager token selector and max bet info */}
+          <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg space-y-2">
+            <label className="text-sm font-medium text-white block">Wager Token</label>
+            <select
+              value={selectedToken}
+              onChange={(e) => setSelectedToken(e.target.value as TokenSymbol)}
+              className="w-full border border-neutral-600 bg-black text-white rounded-lg px-3 py-2 text-sm font-medium focus:border-neutral-400 transition"
+            >
+              {TOKENS.map((token) => (
+                <option key={token.symbol} value={token.symbol}>
+                  {token.symbol}
+                </option>
+              ))}
+            </select>
+
+            <div className="text-xs space-y-1 pt-2 border-t border-neutral-700">
+              <div className="flex justify-between text-neutral-400">
+                <span>Max per hand (5% cap)</span>
+                <span className="font-mono text-white">
+                  {maxBetByRules.bankrollMax.toFixed(6)} {selectedToken}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-neutral-400">Game rules limit</span>
-            <span className="font-mono text-white">{maxBetByRules.gameMax.toFixed(0)} USDC</span>
-          </div>
-        </div>
+        </>
       )}
 
       {/* Bet Input */}
@@ -218,7 +320,7 @@ export default function BetControls({
           <div className="text-xs space-y-1">
             {isInsufficientBalance && (
               <div className="text-red-400">
-                ⚠️ Bet exceeds bankroll limit ({maxBetByRules.effective} USDC max)
+                ⚠️ Bet exceeds bankroll limit ({maxBetByRules.effective} {selectedToken} max)
               </div>
             )}
             {isDramaticWager && !isInsufficientBalance && (
@@ -228,7 +330,7 @@ export default function BetControls({
             )}
             {!isInsufficientBalance && clampedBet !== betAmount && betAmount > 0 && (
               <div className="text-blue-400">
-                ℹ️ Auto-adjust: {betAmount} → {clampedBet} USDC
+                ℹ️ Auto-adjust: {betAmount} → {clampedBet} {selectedToken}
               </div>
             )}
             {isValid && !isDramaticWager && (
