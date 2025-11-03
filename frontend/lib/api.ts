@@ -12,17 +12,16 @@ import type { GameState } from '@/lib/store'
  */
 
 // Use relative URLs in browser (proxied via Next.js rewrites) to avoid CORS
-// Use absolute URLs in server-side contexts
+// Always use relative URLs for client-side requests to avoid SSR issues
 const getBaseUrl = () => {
-  // In browser, use relative URL (proxied via Next.js rewrites)
+  // Always use relative URL in browser (proxied via Next.js rewrites)
+  // This prevents SSR issues and deploymentId errors
   if (typeof window !== 'undefined') {
     return ''
   }
-  // Server-side: use absolute URL
+  // Server-side: use absolute URL (only if needed for SSR/API routes)
   return process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080'
 }
-
-const BASE_URL = getBaseUrl()
 
 /**
  * Helper to check if response is ok, throw otherwise
@@ -35,10 +34,16 @@ function throwIfNotOk(res: Response) {
 
 /**
  * Generic GET request
+ * Client-side only - uses relative URLs proxied by Next.js
  */
 export async function getJSON<T>(path: string): Promise<T> {
+  // Ensure this only runs client-side to avoid SSR/deploymentId issues
+  if (typeof window === 'undefined') {
+    throw new Error('getJSON can only be called from client-side code')
+  }
+  
   try {
-    const url = `${BASE_URL}${path}`
+    const url = getBaseUrl() + path
     const res = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -54,10 +59,16 @@ export async function getJSON<T>(path: string): Promise<T> {
 
 /**
  * Generic POST request
+ * Client-side only - uses relative URLs proxied by Next.js
  */
 export async function postJSON<T>(path: string, body: any): Promise<T> {
+  // Ensure this only runs client-side to avoid SSR/deploymentId issues
+  if (typeof window === 'undefined') {
+    throw new Error('postJSON can only be called from client-side code')
+  }
+  
   try {
-    const url = `${BASE_URL}${path}`
+    const url = getBaseUrl() + path
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -73,10 +84,16 @@ export async function postJSON<T>(path: string, body: any): Promise<T> {
 
 /**
  * Generic PUT request
+ * Client-side only - uses relative URLs proxied by Next.js
  */
 export async function putJSON<T>(path: string, body: any): Promise<T> {
+  // Ensure this only runs client-side to avoid SSR/deploymentId issues
+  if (typeof window === 'undefined') {
+    throw new Error('putJSON can only be called from client-side code')
+  }
+  
   try {
-    const url = `${BASE_URL}${path}`
+    const url = getBaseUrl() + path
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

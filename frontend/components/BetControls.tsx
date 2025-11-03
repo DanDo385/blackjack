@@ -5,6 +5,7 @@ import { useAccount, useBalance } from 'wagmi'
 import { showTokensBroughtToTableAlert } from '@/lib/alerts'
 import { useStore } from '@/lib/store'
 import { postJSON } from '@/lib/api'
+import GameActions from './GameActions'
 
 /**
  * BetControls Component
@@ -60,6 +61,7 @@ export default function BetControls({
   const { address, isConnected } = useAccount()
   const [inputValue, setInputValue] = useState<string>('')
   const [selectedToken, setSelectedToken] = useState<TokenSymbol>('USDC')
+  const { tokensInPlay, gameActive } = useStore()
 
   // Prevent hydration mismatch with wallet hooks
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function BetControls({
     setInputValue(maxBetByRules.effective.toString())
   }
 
-  // Place bet handler
+  // Place bet handler - Phase 1: Bring tokens to table
   const handlePlaceBet = async () => {
     if (!isConnected) {
       toast.error('Please connect your wallet first')
@@ -173,10 +175,22 @@ export default function BetControls({
     }
 
     try {
-      await postJSON('/api/engine/bet', {
+      // Call backend to bring tokens to table
+      const response = await postJSON<{
+        handId?: number
+        dealerHand?: string[]
+        playerHand?: string[]
+        message?: string
+      }>('/api/engine/bet', {
         amount: finalBet,
         token: selectedToken,
       })
+
+      // Update store with tokens in play
+      useStore.getState().setTokensInPlay(finalBet, selectedToken)
+
+      // Update store with last bet
+      useStore.setState({ lastBet: finalBet })
 
       // Show success alert
       showTokensBroughtToTableAlert({
@@ -184,8 +198,14 @@ export default function BetControls({
         token: selectedToken,
       })
 
-      // Update store with last bet
-      useStore.setState({ lastBet: finalBet })
+      // Start game by dealing cards
+      if (response.handId) {
+        useStore.getState().setGameState(
+          response.dealerHand || [],
+          response.playerHand || [],
+          response.handId
+        )
+      }
 
       // Reset input
       setInputValue('')
@@ -206,6 +226,12 @@ export default function BetControls({
     )
   }
 
+  // Phase 2: Show game actions if tokens are in play
+  if (gameActive && tokensInPlay > 0) {
+    return <GameActions />
+  }
+
+  // Phase 1: Show betting interface
   return (
     <div className="space-y-4">
       {/* Wallet Status */}

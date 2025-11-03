@@ -3,11 +3,13 @@ const nextConfig = {
   reactStrictMode: true,
   images: { unoptimized: true },
   // Proxy API requests to backend to avoid CORS issues
+  // Only rewrites client-side requests, not SSR
   async rewrites() {
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080'
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080'}/api/:path*`,
+        destination: `${apiBase}/api/:path*`,
       },
     ]
   },

@@ -26,12 +26,23 @@ export type GameState = {
   runningCount: number
   decks: number
 
+  // Game state
+  tokensInPlay: number
+  tokenInPlay: string // Token symbol (ETH, USDC, etc.)
+  gameActive: boolean
+  dealerHand: string[] // Card image paths
+  playerHand: string[] // Card image paths
+  handId: number | null
+
   // Actions
   newShoe: () => void
   resetCounting: () => void
+  setTokensInPlay: (amount: number, token: string) => void
+  cashOut: () => void
+  setGameState: (dealerHand: string[], playerHand: string[], handId: number) => void
 }
 
-const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting'> = {
+const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInPlay' | 'cashOut' | 'setGameState'> = {
   // Start with 0% shoe dealt, 0 true count
   trueCount: 0,
   shoePct: 0,
@@ -48,6 +59,14 @@ const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting'> = {
   cardsDealt: 0,
   runningCount: 0,
   decks: 7,
+
+  // Game state
+  tokensInPlay: 0,
+  tokenInPlay: '',
+  gameActive: false,
+  dealerHand: [],
+  playerHand: [],
+  handId: null,
 }
 
 export const useStore = create<GameState>((set) => ({
@@ -74,6 +93,40 @@ export const useStore = create<GameState>((set) => ({
       runningCount: 0,
       trueCount: 0,
       shoePct: 0,
+    }),
+
+  /**
+   * Set tokens brought to table
+   */
+  setTokensInPlay: (amount: number, token: string) =>
+    set({
+      tokensInPlay: amount,
+      tokenInPlay: token,
+      gameActive: true,
+    }),
+
+  /**
+   * Cash out - reset tokens and return to betting phase
+   */
+  cashOut: () =>
+    set({
+      tokensInPlay: 0,
+      tokenInPlay: '',
+      gameActive: false,
+      dealerHand: [],
+      playerHand: [],
+      handId: null,
+    }),
+
+  /**
+   * Update game state with dealer/player hands
+   */
+  setGameState: (dealerHand: string[], playerHand: string[], handId: number) =>
+    set({
+      dealerHand,
+      playerHand,
+      handId,
+      gameActive: true,
     }),
 }))
 

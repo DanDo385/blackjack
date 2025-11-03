@@ -2,6 +2,7 @@
 import Image from 'next/image'
 import RetroScoreboard from './RetroScoreboard'
 import BetControls from './BetControls'
+import InsuranceModal from './InsuranceModal'
 import { useStore } from '@/lib/store'
 import { useEffect, useState } from 'react'
 import { useGameOutcomes, useShuffleAlerts } from '@/lib/gameOutcomes'
@@ -37,8 +38,11 @@ export default function TableCanvas() {
   const dealer = ['/cards/10-H.png', '/cards/back.png']
   const player = ['/cards/9-C.png']
 
+  const { dealerHand, playerHand } = useStore()
+
   return (
     <div className="max-w-6xl mx-auto">
+      <InsuranceModal />
       <BetAgainHandler onDeal={handleDeal} />
       <RetroScoreboard trueCount={trueCount} shoePct={shoePct} />
 
@@ -55,76 +59,43 @@ export default function TableCanvas() {
 
         {/* Cards overlay - positioned absolutely on felt */}
         <div className="pointer-events-none absolute inset-0">
-          {/* Dealer cards - two card backs + one face-up card, horizontally aligned */}
-          <div className="absolute flex gap-4" style={{ left: '50%', top: '20%', transform: 'translateX(-50%)' }}>
-            {/* Dealer card back 1 */}
-            <div>
-              <Image
-                alt="dealer back 1"
-                src="/cards/back.png"
-                width={30}
-                height={42}
-                className="card-small"
-                draggable={false}
-                tabIndex={-1}
-              />
+          {/* Dealer cards - dynamically render from store */}
+          {dealerHand.length > 0 && (
+            <div className="absolute flex gap-4" style={{ left: '50%', top: '20%', transform: 'translateX(-50%)' }}>
+              {dealerHand.map((card, idx) => (
+                <div key={idx}>
+                  <Image
+                    alt={`dealer card ${idx + 1}`}
+                    src={card.startsWith('/cards/') ? card : `/cards/${card}`}
+                    width={30}
+                    height={42}
+                    className="card-small"
+                    draggable={false}
+                    tabIndex={-1}
+                  />
+                </div>
+              ))}
             </div>
+          )}
 
-            {/* Dealer card back 2 */}
-            <div>
-              <Image
-                alt="dealer back 2"
-                src="/cards/back.png"
-                width={30}
-                height={42}
-                className="card-small"
-                draggable={false}
-                tabIndex={-1}
-              />
+          {/* Player cards - dynamically render from store */}
+          {playerHand.length > 0 && (
+            <div className="absolute flex gap-4" style={{ left: '50%', bottom: '25%', transform: 'translateX(-50%)' }}>
+              {playerHand.map((card, idx) => (
+                <div key={idx}>
+                  <Image
+                    alt={`player card ${idx + 1}`}
+                    src={card.startsWith('/cards/') ? card : `/cards/${card}`}
+                    width={30}
+                    height={42}
+                    className="card-small"
+                    draggable={false}
+                    tabIndex={-1}
+                  />
+                </div>
+              ))}
             </div>
-
-            {/* Dealer face-up card */}
-            <div>
-              <Image
-                alt="dealer face-up"
-                src={dealer[0]}
-                width={30}
-                height={42}
-                className="card-small"
-                draggable={false}
-                tabIndex={-1}
-              />
-            </div>
-          </div>
-
-          {/* Player cards - one card back + one face-up card, horizontally aligned */}
-          <div className="absolute flex gap-4" style={{ left: '50%', bottom: '25%', transform: 'translateX(-50%)' }}>
-            {/* Player card back */}
-            <div>
-              <Image
-                alt="player back"
-                src="/cards/back.png"
-                width={30}
-                height={42}
-                className="card-small"
-                draggable={false}
-                tabIndex={-1}
-              />
-            </div>
-
-            {/* Player face-up card */}
-            <div>
-              <Image
-                alt="player face-up"
-                src={player[0]}
-                width={30}
-                height={42}
-                className="card-small"
-                draggable={false}
-                tabIndex={-1}
-              />
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

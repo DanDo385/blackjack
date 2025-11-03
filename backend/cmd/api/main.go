@@ -57,6 +57,14 @@ func main() {
 	r.Get("/api/engine/state", handlers.GetEngineState)
 	r.Post("/api/engine/bet", handlers.PostBet)
 
+	// Game actions
+	r.Post("/api/game/hit", handlers.PostHit)
+	r.Post("/api/game/stand", handlers.PostStand)
+	r.Post("/api/game/split", handlers.PostSplit)
+	r.Post("/api/game/double", handlers.PostDouble)
+	r.Post("/api/game/insurance", handlers.PostInsurance)
+	r.Post("/api/game/cashout", handlers.PostCashOut)
+
 	// Treasury
 	r.Get("/api/treasury/overview", handlers.GetTreasuryOverview)
 

@@ -1,7 +1,7 @@
 export const addresses = {
-  factory: '0x4826533B4897376654Bb4d4AD88B7faFD0C98528',
-  tableStd: '0xca4211da53d1bbab819B03138302a21d6F6B7647',
-  tablePrem: '0xE7402c51ae0bd667ad57a99991af6C2b686cd4f1',
+  factory: '0x9d4454B023096f34B160D6B654540c56A1F81688',
+  tableStd: '0xBeaAFDA2E17fC95E69Dc06878039d274E0d2B21A',
+  tablePrem: '0xdf077F5F72071dF6e8B0a78071E496bA17b5Ee0c',
   treasury: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
 } as const
 
