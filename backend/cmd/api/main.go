@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/DanDo385/blackjack/backend/internal/contracts"
 	"github.com/DanDo385/blackjack/backend/internal/handlers"
 	"github.com/DanDo385/blackjack/backend/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -56,6 +58,7 @@ func main() {
 	// Engine / Game
 	r.Get("/api/engine/state", handlers.GetEngineState)
 	r.Post("/api/engine/bet", handlers.PostBet)
+	r.Post("/api/game/resolve", handlers.PostResolve)
 
 	// Game actions
 	r.Post("/api/game/hit", handlers.PostHit)
@@ -71,6 +74,20 @@ func main() {
 	// User
 	r.Get("/api/user/summary", handlers.GetUserSummary)
 	r.Get("/api/user/hands", handlers.GetUserHands)
+
+	// Start event watcher if TABLE_ADDRESS is configured
+	tableAddr := os.Getenv("TABLE_ADDRESS")
+	if tableAddr != "" {
+		watcher, err := contracts.NewEventWatcher(tableAddr)
+		if err != nil {
+			log.Printf("Warning: Failed to start event watcher: %v", err)
+		} else {
+			ctx := context.Background()
+			watcher.Start(ctx)
+			log.Println("Event watcher started for table:", tableAddr)
+			defer watcher.Stop()
+		}
+	}
 
 	log.Println("dev api on :8080")
 	http.ListenAndServe(":8080", r)

@@ -63,24 +63,53 @@ func NewTableContract(tableAddress string) (*TableContract, error) {
 	}, nil
 }
 
+// PlaceBet calls placeBet on the Table contract
+// Returns the handId from the transaction
+func (tc *TableContract) PlaceBet(ctx context.Context, tokenAddr common.Address, amount *big.Int, usdcRef *big.Int, quoteId [32]byte) (*big.Int, error) {
+	// Note: This requires contract ABI bindings generated via abigen
+	// For now, return an error indicating bindings are needed
+	// To generate bindings:
+	//   abigen --abi Table.abi --pkg contracts --type Table --out table_bindings.go
+	return nil, fmt.Errorf("PlaceBet requires contract ABI bindings - generate with abigen")
+}
+
+// Settle calls settle on the Table contract
+func (tc *TableContract) Settle(ctx context.Context, handId *big.Int) error {
+	// Note: This requires contract ABI bindings
+	return fmt.Errorf("Settle requires contract ABI bindings - generate with abigen")
+}
+
+// GetSpreadNum reads the spreadNum parameter from the contract
+func (tc *TableContract) GetSpreadNum(ctx context.Context) (*big.Int, error) {
+	// Note: This requires contract ABI bindings
+	return nil, fmt.Errorf("GetSpreadNum requires contract ABI bindings - generate with abigen")
+}
+
+// GetGrowthCapBps reads the growthCapBps parameter from the contract
+func (tc *TableContract) GetGrowthCapBps(ctx context.Context) (*big.Int, error) {
+	// Note: This requires contract ABI bindings
+	return nil, fmt.Errorf("GetGrowthCapBps requires contract ABI bindings - generate with abigen")
+}
+
+// GetTableMin reads the tableMin parameter from the contract
+func (tc *TableContract) GetTableMin(ctx context.Context) (*big.Int, error) {
+	// Note: This requires contract ABI bindings
+	return nil, fmt.Errorf("GetTableMin requires contract ABI bindings - generate with abigen")
+}
+
+// GetTableMax reads the tableMax parameter from the contract
+func (tc *TableContract) GetTableMax(ctx context.Context) (*big.Int, error) {
+	// Note: This requires contract ABI bindings
+	return nil, fmt.Errorf("GetTableMax requires contract ABI bindings - generate with abigen")
+}
+
 // FulfillRandomness calls the fulfillRandomness function on the Table contract
-// This is a simplified version - in production you'd use the generated ABI bindings
+// Note: VRF automatically calls fulfillRandomWords, but this is kept for backward compatibility
 func (tc *TableContract) FulfillRandomness(ctx context.Context, handId *big.Int, seed [32]byte) error {
-	// For now, we'll use a direct contract call
-	// In production, you'd generate proper ABI bindings using abigen
-	
-	// Create the function selector for fulfillRandomness(uint256,bytes32)
-	// Function signature: fulfillRandomness(uint256,bytes32)
-	// Keccak256("fulfillRandomness(uint256,bytes32)") = first 4 bytes
-	funcSelector := crypto.Keccak256([]byte("fulfillRandomness(uint256,bytes32)"))[:4]
-	
-	// Encode parameters: uint256 handId, bytes32 seed
-	// This is a simplified version - in production use abigen or proper ABI encoding
-	_ = funcSelector
-	_ = handId
-	_ = seed
-	
-	return fmt.Errorf("fulfillRandomness requires contract ABI bindings - see comments for implementation")
+	// Note: This requires contract ABI bindings generated via abigen
+	// The contract's fulfillRandomWords is called automatically by VRF coordinator
+	// This function is kept for backward compatibility only
+	return fmt.Errorf("FulfillRandomness requires contract ABI bindings - VRF calls fulfillRandomWords automatically")
 }
 
 // Close closes the ethereum client connection
@@ -89,4 +118,3 @@ func (tc *TableContract) Close() {
 		tc.client.Close()
 	}
 }
-

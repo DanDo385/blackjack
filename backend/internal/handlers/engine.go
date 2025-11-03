@@ -1,11 +1,19 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/DanDo385/blackjack/backend/internal/contracts"
+	"github.com/DanDo385/blackjack/backend/internal/game"
+	"github.com/DanDo385/blackjack/backend/internal/storage"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Card represents a playing card
@@ -87,9 +95,13 @@ func GetEngineState(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostBet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var req struct {
-		Amount float64 `json:"amount"`
-		Token  string  `json:"token"`
+		Amount  float64 `json:"amount"`
+		Token   string  `json:"token"`
+		USDCRef *string `json:"usdcRef,omitempty"`
+		QuoteID *string `json:"quoteId,omitempty"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -97,18 +109,171 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Deal initial hands
-	dealerHand, playerHand := dealInitialHands()
+	// Get player address from request (in production, authenticate/authorize)
+	// For now, use a placeholder - in production get from auth token
+	playerAddr := r.Header.Get("X-Player-Address")
+	if playerAddr == "" {
+		http.Error(w, "Player address required", http.StatusBadRequest)
+		return
+	}
 
-	// Generate hand ID
-	handID := int(time.Now().Unix())
+	// Convert amount to big.Int (assuming 18 decimals for most tokens)
+	amountWei := new(big.Int)
+	amountFloat := big.NewFloat(req.Amount)
+	amountFloat.Mul(amountFloat, big.NewFloat(1e18))
+	amountWei, _ = amountFloat.Int(nil)
 
-	resp := GameState{
-		HandID:     handID,
-		DealerHand: dealerHand,
-		PlayerHand: playerHand,
-		Tokens:     req.Amount,
-		Message:    "Cards dealt",
+	_ = common.HexToAddress(req.Token) // tokenAddr - stored for future contract calls
+
+	// Get table address from env
+	tableAddr := os.Getenv("TABLE_ADDRESS")
+	if tableAddr == "" {
+		// Fallback: return pending state without calling contract
+		handID := time.Now().Unix()
+		
+		// Save to Redis as pending
+		handState := map[string]interface{}{
+			"handId":      handID,
+			"player":     playerAddr,
+			"token":      req.Token,
+			"amount":     amountWei.String(),
+			"status":     "pending_contract",
+			"created_at": time.Now().Unix(),
+		}
+		storage.SetHandState(ctx, handID, handState, 30*time.Minute)
+
+		resp := map[string]interface{}{
+			"handId":  handID,
+			"status":  "pending",
+			"message": "Bet placed, awaiting contract confirmation",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// Create table contract wrapper
+	tableContract, err := contracts.NewTableContract(tableAddr)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to connect to contract: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer tableContract.Close()
+
+	// Prepare parameters
+	var usdcRef *big.Int
+	if req.USDCRef != nil {
+		usdcRef = new(big.Int)
+		usdcRef.SetString(*req.USDCRef, 10)
+	}
+
+	var quoteId [32]byte
+	if req.QuoteID != nil {
+		quoteBytes, _ := hex.DecodeString(*req.QuoteID)
+		copy(quoteId[:], quoteBytes)
+	}
+
+	// Call placeBet on contract
+	// Note: This requires ABI bindings - for now return pending state
+	handID := time.Now().Unix()
+
+	// Save to Redis and PostgreSQL
+	handState := map[string]interface{}{
+		"handId":      handID,
+		"player":     playerAddr,
+		"token":      req.Token,
+		"amount":     amountWei.String(),
+		"status":     "pending_randomness",
+		"created_at": time.Now().Unix(),
+	}
+	storage.SetHandState(ctx, handID, handState, 30*time.Minute)
+
+	// Save to PostgreSQL
+	err = storage.SaveHandStart(ctx, handID, playerAddr, req.Token, amountWei.String(), "")
+	if err != nil {
+		// Log but don't fail request
+		fmt.Printf("Warning: Failed to save hand to PostgreSQL: %v\n", err)
+	}
+
+	resp := map[string]interface{}{
+		"handId":  handID,
+		"status":  "pending",
+		"message": "Bet placed, awaiting VRF randomness",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// PostResolve resolves a hand using stored VRF seed
+func PostResolve(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req struct {
+		HandID int64 `json:"handId"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Get hand state from Redis
+	handState, err := storage.GetHandState(ctx, req.HandID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Hand not found: %v", err), http.StatusNotFound)
+		return
+	}
+
+	seedHex, ok := handState["seed"].(string)
+	if !ok || seedHex == "" {
+		http.Error(w, "Hand randomness not yet fulfilled", http.StatusBadRequest)
+		return
+	}
+
+	// Decode seed
+	seed, err := hex.DecodeString(seedHex)
+	if err != nil || len(seed) != 32 {
+		http.Error(w, "Invalid seed format", http.StatusBadRequest)
+		return
+	}
+
+	// Get hand details
+	playerAddr, _ := handState["player"].(string)
+	tokenAddr, _ := handState["token"].(string)
+	amountStr, _ := handState["amount"].(string)
+
+	// Resolve hand using game engine
+	result, err := game.ResolveHand(req.HandID, playerAddr, tokenAddr, amountStr, seed)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to resolve hand: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Save result to PostgreSQL
+	err = storage.SaveHandResult(ctx, result)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save result: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Update Redis
+	storage.UpdateHandState(ctx, req.HandID, map[string]interface{}{
+		"status":      "resolved",
+		"result":      result.Outcome,
+		"payout":      result.Payout.String(),
+		"dealerCards": result.DealerCards,
+		"playerCards": result.PlayerCards,
+	}, 15*time.Minute)
+
+	// Return resolved state
+	resp := map[string]interface{}{
+		"handId":      result.HandID,
+		"outcome":     result.Outcome,
+		"payout":      result.Payout.String(),
+		"dealerHand":  result.DealerCards,
+		"playerHand":  result.PlayerCards,
+		"feeLink":     result.FeeLink.String(),
+		"feeNickelRef": result.FeeNickelRef.String(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
