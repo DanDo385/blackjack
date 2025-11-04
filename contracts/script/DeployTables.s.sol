@@ -36,7 +36,7 @@ contract DeployTables is Script {
       decks: 7,
       penetrationBps: 6700,
       hitSoft17: true,
-      bjPayoutBps: 14000,        // overwritten for premier
+      bjPayoutBps: 14000,        // 7:5 payout (1.4x)
       allowDAS: true,
       allowSurrender: false,
       splitAcesOnce: true,
@@ -44,13 +44,9 @@ contract DeployTables is Script {
     });
 
     Factory f = Factory(factory);
-    address stdTable = f.createTable(r, treasury, false, vrfCoordinator, keyHash, subscriptionId, callbackGasLimit);
+    address table = f.createTable(r, treasury, vrfCoordinator, keyHash, subscriptionId, callbackGasLimit);
 
-    r.bjPayoutBps = 15000;
-    address premTable = f.createTable(r, treasury, true, vrfCoordinator, keyHash, subscriptionId, callbackGasLimit);
-
-    console2.log("Standard Table:", stdTable);
-    console2.log("Premier Table:", premTable);
+    console2.log("Table:", table);
     console2.log("VRF Coordinator:", vrfCoordinator);
     console2.log("Subscription ID:", subscriptionId);
     vm.stopBroadcast();

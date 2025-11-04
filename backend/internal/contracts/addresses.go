@@ -11,8 +11,7 @@ import (
 // DeploymentAddresses holds contract addresses from Foundry deployments
 type DeploymentAddresses struct {
 	FactoryAddr    string
-	TableStdAddr   string
-	TablePremAddr  string
+	TableAddr      string
 	TreasuryAddr   string
 	VRFCoordinator string
 }
@@ -39,10 +38,10 @@ func LoadAddressesFromFoundry(chainID int64) (*DeploymentAddresses, error) {
 		}
 	}
 
-	// Try to find Table addresses from DeployTables broadcast
-	// TableCreated event signature: keccak256("TableCreated(address,bool)")
-	tableCreatedSig := "0xbc20dac13c4f58bd3c4597ad92ac146cd8edd02d82169590e66cee339c7d98d1"
-	
+	// Try to find Table address from DeployTables broadcast
+	// TableCreated event signature: keccak256("TableCreated(address)")
+	tableCreatedSig := "0x8c32c568416fcf6f835b4866c4b1e199032e90de1e3b5e29c8c5c5f122922084"
+
 	broadcastPath := filepath.Join("contracts", "broadcast", "DeployTables.s.sol", fmt.Sprintf("%d", chainID), "run-latest.json")
 	if _, err := os.Stat(broadcastPath); os.IsNotExist(err) {
 		broadcastPath = filepath.Join("..", broadcastPath)
@@ -64,23 +63,15 @@ func LoadAddressesFromFoundry(chainID int64) (*DeploymentAddresses, error) {
 				for _, log := range receipt.Logs {
 					if len(log.Topics) > 0 && log.Topics[0] == tableCreatedSig {
 						// Decode Table address from log data
-						// Data format: table address (32 bytes) + premier flag (32 bytes)
-						if len(log.Data) >= 130 { // 0x + 128 hex chars
-							// Remove 0x prefix and extract table address (first 64 chars = 32 bytes)
+						// Data format: table address (32 bytes)
+						if len(log.Data) >= 66 { // 0x + 64 hex chars
+							// Remove 0x prefix and extract table address
 							dataHex := strings.TrimPrefix(log.Data, "0x")
-							if len(dataHex) >= 128 {
-								// Table address is first 32 bytes (64 hex chars)
+							if len(dataHex) >= 64 {
+								// Table address is 32 bytes (64 hex chars)
 								tableAddrHex := "0x" + dataHex[24:64] // Skip leading zeros, take address
-								
-								// Premier flag is second 32 bytes (last 64 hex chars)
-								premierHex := dataHex[64:128]
-								isPremier := premierHex != "0000000000000000000000000000000000000000000000000000000000000000"
-								
-								if isPremier {
-									addrs.TablePremAddr = tableAddrHex
-								} else {
-									addrs.TableStdAddr = tableAddrHex
-								}
+								addrs.TableAddr = tableAddrHex
+								break // Only need one table now
 							}
 						}
 					}
@@ -93,11 +84,8 @@ func LoadAddressesFromFoundry(chainID int64) (*DeploymentAddresses, error) {
 	if addrs.FactoryAddr == "" {
 		addrs.FactoryAddr = os.Getenv("FACTORY_ADDR")
 	}
-	if addrs.TableStdAddr == "" {
-		addrs.TableStdAddr = os.Getenv("TABLE_STD_ADDR")
-	}
-	if addrs.TablePremAddr == "" {
-		addrs.TablePremAddr = os.Getenv("TABLE_PREM_ADDR")
+	if addrs.TableAddr == "" {
+		addrs.TableAddr = os.Getenv("TABLE_ADDR")
 	}
 	if addrs.TreasuryAddr == "" {
 		addrs.TreasuryAddr = os.Getenv("TREASURY_ADDR")
@@ -109,8 +97,7 @@ func LoadAddressesFromFoundry(chainID int64) (*DeploymentAddresses, error) {
 	return addrs, nil
 }
 
-// GetTableAddress returns the appropriate table address based on env or Foundry
-// Defaults to standard table if TABLE_ADDRESS not set
+// GetTableAddress returns the table address based on env or Foundry
 // TABLE_ADDRESS should be the Table contract address (not Factory) since events are emitted from Table contracts
 func GetTableAddress() string {
 	// First check env var
@@ -120,8 +107,8 @@ func GetTableAddress() string {
 
 	// Try to load from Foundry (default to chain 31337 for Anvil)
 	addrs, err := LoadAddressesFromFoundry(31337)
-	if err == nil && addrs.TableStdAddr != "" {
-		return addrs.TableStdAddr
+	if err == nil && addrs.TableAddr != "" {
+		return addrs.TableAddr
 	}
 
 	// Last resort: return empty (will disable event watcher)

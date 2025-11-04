@@ -20,7 +20,7 @@ import ReDealPrompt from './ReDealPrompt'
  * Rules:
  * - Max bet = min(wallet * 5%, game max, growth cap)
  * - Min bet = max(table min, anchor / spread)
- * - Growth cap: max 33% (Standard) or 40% (Premier) vs last bet
+ * - Growth cap: max 33% vs last bet
  */
 
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const

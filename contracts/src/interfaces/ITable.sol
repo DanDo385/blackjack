@@ -6,7 +6,7 @@ interface ITable {
     uint8 decks;            // 7
     uint16 penetrationBps;  // 6700
     bool hitSoft17;         // true
-    uint16 bjPayoutBps;     // 14000 std, 15000 premier
+    uint16 bjPayoutBps;     // 14000 (7:5 payout)
     bool allowDAS;          // true (non-aces)
     bool allowSurrender;    // false
     bool splitAcesOnce;     // true

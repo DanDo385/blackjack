@@ -18,7 +18,7 @@ contract FactoryTest is Test {
     uint64 public subscriptionId;
     uint32 public callbackGasLimit;
 
-    event TableCreated(address indexed table, bool premier);
+    event TableCreated(address indexed table);
 
     function setUp() public {
         owner = address(this);
@@ -36,16 +36,15 @@ contract FactoryTest is Test {
         assertEq(factory.owner(), address(this));
     }
 
-    function test_CreateStandardTable() public {
+    function test_CreateTable() public {
         ITable.Rules memory rules = TestHelpers.createStandardRules();
 
         vm.expectEmit(true, false, false, true);
-        emit TableCreated(address(0), false);
+        emit TableCreated(address(0));
 
         address tableAddress = factory.createTable(
             rules,
             treasury,
-            false,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
@@ -63,56 +62,30 @@ contract FactoryTest is Test {
         assertEq(table.growthCapBps(), 3300);
     }
 
-    function test_CreatePremierTable() public {
-        ITable.Rules memory rules = TestHelpers.createPremierRules();
+    function test_CreateMultipleTables() public {
+        ITable.Rules memory rules = TestHelpers.createStandardRules();
 
-        vm.expectEmit(true, false, false, true);
-        emit TableCreated(address(0), true);
-
-        address tableAddress = factory.createTable(
+        address table1 = factory.createTable(
             rules,
             treasury,
-            true,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
             callbackGasLimit
         );
 
-        assertNotEq(tableAddress, address(0));
-        Table table = Table(payable(tableAddress));
-        assertEq(table.rules().bjPayoutBps, 15000);
-        assertEq(table.spreadNum(), 5);
-        assertEq(table.growthCapBps(), 4000);
-    }
-
-    function test_CreateMultipleTables() public {
-        ITable.Rules memory stdRules = TestHelpers.createStandardRules();
-        ITable.Rules memory premRules = TestHelpers.createPremierRules();
-
-        address stdTable = factory.createTable(
-            stdRules,
+        address table2 = factory.createTable(
+            rules,
             treasury,
-            false,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
             callbackGasLimit
         );
 
-        address premTable = factory.createTable(
-            premRules,
-            treasury,
-            true,
-            address(vrfCoordinator),
-            keyHash,
-            subscriptionId,
-            callbackGasLimit
-        );
-
-        assertNotEq(stdTable, premTable);
-        assertNotEq(stdTable, address(0));
-        assertNotEq(premTable, address(0));
+        assertNotEq(table1, table2);
+        assertNotEq(table1, address(0));
+        assertNotEq(table2, address(0));
     }
 
     function test_CreateTableWithCustomRules() public {
@@ -130,7 +103,6 @@ contract FactoryTest is Test {
         address tableAddress = factory.createTable(
             rules,
             treasury,
-            false,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
@@ -156,7 +128,6 @@ contract FactoryTest is Test {
         factory.createTable(
             rules,
             treasury,
-            false,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
@@ -172,7 +143,6 @@ contract FactoryTest is Test {
         address tableAddress = factory.createTable(
             rules,
             address(0),
-            false,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
@@ -191,7 +161,6 @@ contract FactoryTest is Test {
         address tableAddress = factory.createTable(
             rules,
             treasury,
-            false,
             address(vrfCoordinator),
             customKeyHash,
             customSubId,
@@ -204,7 +173,7 @@ contract FactoryTest is Test {
         assertEq(table.callbackGasLimit(), customGasLimit);
     }
 
-    function test_Fuzz_CreateTable(uint8 decks, uint16 penetrationBps, bool premier) public {
+    function test_Fuzz_CreateTable(uint8 decks, uint16 penetrationBps) public {
         vm.assume(decks > 0 && decks <= 10);
         vm.assume(penetrationBps > 0 && penetrationBps <= 10000);
 
@@ -212,7 +181,7 @@ contract FactoryTest is Test {
             decks,
             penetrationBps,
             true,
-            premier ? uint16(15000) : uint16(14000),
+            14000,  // Fixed 7:5 payout
             true,
             false,
             true,
@@ -222,7 +191,6 @@ contract FactoryTest is Test {
         address tableAddress = factory.createTable(
             rules,
             treasury,
-            premier,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
