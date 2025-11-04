@@ -18,8 +18,8 @@ contract Table is ITable, VRFConsumerBaseV2 {
   uint256 public reshuffleAt;
 
   // wagering rails
-  uint256 public spreadNum;        // 4 (std) or 5 (premier)
-  uint256 public growthCapBps;     // 3300 or 4000
+  uint256 public spreadNum;        // 4 (fixed)
+  uint256 public growthCapBps;     // 3300 (fixed)
   uint256 public stepBps;          // 500 (5%)
   uint256 public tableMin;         // in token units (example rails)
   uint256 public tableMax;
@@ -45,7 +45,6 @@ contract Table is ITable, VRFConsumerBaseV2 {
     Rules memory r,
     address _treasury,
     address _owner,
-    bool premier,
     address _vrfCoordinator,
     bytes32 _keyHash,
     uint64 _subscriptionId,
@@ -56,13 +55,9 @@ contract Table is ITable, VRFConsumerBaseV2 {
     owner = _owner;
     shoeId = 1;
     reshuffleAt = uint256(r.decks) * 52 * uint256(r.penetrationBps) / 10000;
-    if (premier) {
-      spreadNum = 5;
-      growthCapBps = 4000;
-    } else {
-      spreadNum = 4;
-      growthCapBps = 3300;
-    }
+    // Fixed wagering rules (Standard only)
+    spreadNum = 4;
+    growthCapBps = 3300;
     stepBps = 500;
     tableMin = 1e6;
     tableMax = 1_000_000e6;

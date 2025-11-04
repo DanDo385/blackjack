@@ -25,7 +25,7 @@ export default function TableCanvas() {
   useShuffleAlerts()
 
   useEffect(() => {
-    const id = setInterval(() => setNextIdx((n) => (n + 1) % 4), 250)
+    const id = setInterval(() => setNextIdx((n) => (n + 1) % 4), 2.5)
     return () => clearInterval(id)
   }, [])
 

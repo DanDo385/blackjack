@@ -167,18 +167,17 @@ forge script script/DeployFactory.s.sol --rpc-url http://localhost:8545 --broadc
 export FACTORY_ADDR=<your-factory-address-here>
 export TREASURY_ADDR=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266  # Using Account #0 as treasury
 
-# Deploy Tables (Standard and Premier)
+# Deploy Table
 forge script script/DeployTables.s.sol --rpc-url http://localhost:8545 --broadcast
 ```
 
 You should see output like:
 
 ```text
-Standard Table: 0x...
-Premier Table: 0x...
+Table: 0x...
 ```
 
-**Save these addresses!** You'll need them for the frontend configuration.
+**Save this address!** You'll need it for the frontend configuration.
 
 #### 2.4 Update Frontend Contract Addresses
 
@@ -187,8 +186,7 @@ Edit `frontend/lib/contracts.ts` and replace the placeholder addresses with your
 ```typescript
 export const addresses = {
   factory: '0xYourFactoryAddress',
-  tableStd: '0xYourStandardTableAddress',
-  tablePrem: '0xYourPremierTableAddress',
+  table: '0xYourTableAddress',
   treasury: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', // Account #0
 } as const
 ```
@@ -447,24 +445,22 @@ blackjack/
 
 ## Game Rules (Locked)
 
-| Rule | Standard | Premier |
-|------|----------|---------|
-| **Decks** | 7 | 7 |
-| **Reshuffle** | 67% penetration | 67% penetration |
-| **Dealer** | H17 (hits soft 17) | H17 |
-| **Blackjack Payout** | 7:5 (1.4×) | 3:2 (1.5×) |
-| **Doubles** | Any two cards; DAS on non-Aces | Any two cards; DAS on non-Aces |
-| **Splits** | Allowed; Aces split once; no hits after | Allowed; Aces split once; no hits after |
-| **Surrender** | None | None |
-| **Mid-shoe entry** | Off | Off |
+| Rule | Value |
+|------|-------|
+| **Decks** | 7 |
+| **Reshuffle** | 67% penetration |
+| **Dealer** | H17 (hits soft 17) |
+| **Blackjack Payout** | 7:5 (1.4×) |
+| **Doubles** | Any two cards; DAS on non-Aces |
+| **Splits** | Allowed; Aces split once; no hits after |
+| **Surrender** | None |
+| **Mid-shoe entry** | Off |
 
 ### Wagering (Static)
 
 - **Anchor**: Rolling median of last 5 played bets
-- **Spread Window**:
-  - Standard: ¼× to 4× Anchor
-  - Premier: ⅕× to 5× Anchor
-- **Growth Cap**: Max +33% vs last bet (Standard), +40% (Premier)
+- **Spread Window**: ¼× to 4× Anchor
+- **Growth Cap**: Max +33% vs last bet
 - **Bet Steps**: 5% of Anchor
 - **Participation**: Must play ≥6 of last 10 hands; extra skips charged 10% micro-ante
 - **Fees** (on wins only): Recoup VRF LINK cost + $0.05 equivalent

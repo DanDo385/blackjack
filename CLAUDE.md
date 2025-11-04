@@ -8,10 +8,7 @@
 
 **Dealer:** H17 (hits soft 17)
 
-**Blackjack payout:**
-
-- Standard: 7:5 (1.4×)
-- Premier: 3:2 (1.5×)
+**Blackjack payout:** 7:5 (1.4×)
 
 **Doubles:** any two; DAS on non-Aces
 
@@ -24,8 +21,8 @@
 **Wagering (static; not TC-dependent):**
 
 - Anchor = rolling median of last 5 played bets
-- Spread window: Standard ¼×…4× Anchor; Premier ⅕×…5×
-- Growth cap: max +33% vs last bet (Standard), +40% (Premier)
+- Spread window: ¼×…4× Anchor
+- Growth cap: max +33% vs last bet
 - Participation: in any last 10 hands, must play ≥6; extra skips charge micro-ante = 10% of table min
 - Bet steps: 5% of Anchor
 

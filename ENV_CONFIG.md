@@ -42,9 +42,8 @@ After deploying contracts with Foundry, addresses are automatically detected. No
 Set in `.env`:
 
 ```bash
-TABLE_ADDRESS=0xYourTableAddress  # Standard table address
-TABLE_STD_ADDR=0x...              # Standard table (optional)
-TABLE_PREM_ADDR=0x...              # Premier table (optional)
+TABLE_ADDRESS=0xYourTableAddress  # Table address
+TABLE_ADDR=0x...                  # Table address (optional)
 FACTORY_ADDR=0x...                # Factory address (optional)
 ```
 

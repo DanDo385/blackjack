@@ -9,30 +9,14 @@ import {ITable} from "../../src/interfaces/ITable.sol";
  */
 library TestHelpers {
     /**
-     * @notice Create standard table rules
+     * @notice Create standard table rules (only one set of rules now)
      */
     function createStandardRules() internal pure returns (ITable.Rules memory) {
         return ITable.Rules({
             decks: 7,
             penetrationBps: 6700,
             hitSoft17: true,
-            bjPayoutBps: 14000,
-            allowDAS: true,
-            allowSurrender: false,
-            splitAcesOnce: true,
-            midShoeEntry: false
-        });
-    }
-
-    /**
-     * @notice Create premier table rules
-     */
-    function createPremierRules() internal pure returns (ITable.Rules memory) {
-        return ITable.Rules({
-            decks: 7,
-            penetrationBps: 6700,
-            hitSoft17: true,
-            bjPayoutBps: 15000,
+            bjPayoutBps: 14000,  // 7:5 payout (1.4x)
             allowDAS: true,
             allowSurrender: false,
             splitAcesOnce: true,

@@ -10,7 +10,6 @@ import {TestHelpers} from "./helpers/TestHelpers.sol";
 
 contract TableTest is Test {
     Table public table;
-    Table public premierTable;
     MockVRFCoordinatorV2 public vrfCoordinator;
     TestERC20 public token;
     address public owner;
@@ -40,26 +39,12 @@ contract TableTest is Test {
         token.mint(player, 1000000e6);
         token.mint(player2, 1000000e6);
 
-        // Create standard table
+        // Create table
         ITable.Rules memory rules = TestHelpers.createStandardRules();
         table = new Table(
             rules,
             treasury,
             owner,
-            false,
-            address(vrfCoordinator),
-            keyHash,
-            subscriptionId,
-            callbackGasLimit
-        );
-
-        // Create premier table
-        ITable.Rules memory premRules = TestHelpers.createPremierRules();
-        premierTable = new Table(
-            premRules,
-            treasury,
-            owner,
-            true,
             address(vrfCoordinator),
             keyHash,
             subscriptionId,
@@ -78,17 +63,12 @@ contract TableTest is Test {
         assertEq(table.treasury(), treasury);
     }
 
-    function test_Constructor_SetsStandardWageringRails() public {
+    function test_Constructor_SetsWageringRails() public {
         assertEq(table.spreadNum(), 4);
         assertEq(table.growthCapBps(), 3300);
         assertEq(table.stepBps(), 500);
         assertEq(table.tableMin(), 1e6);
         assertEq(table.tableMax(), 1_000_000e6);
-    }
-
-    function test_Constructor_SetsPremierWageringRails() public {
-        assertEq(premierTable.spreadNum(), 5);
-        assertEq(premierTable.growthCapBps(), 4000);
     }
 
     function test_Constructor_CalculatesReshuffleAt() public {
@@ -270,18 +250,6 @@ contract TableTest is Test {
 
         uint256 maxAllowed = lastBet * (10000 + table.growthCapBps()) / 10000;
         assertEq(maxAllowed, 133e6); // 100e6 * 1.33 = 133e6
-    }
-
-    function test_GrowthCap_PremierTable() public {
-        uint256 lastBet = 100e6;
-        token.approve(address(premierTable), lastBet);
-        premierTable.placeBet(address(token), lastBet, lastBet, bytes32(0));
-        uint256 requestId = vrfCoordinator.requestCounter() - 1;
-        vrfCoordinator.fulfillRandomWords(requestId, address(premierTable));
-        premierTable.settle(0);
-
-        uint256 maxAllowed = lastBet * (10000 + premierTable.growthCapBps()) / 10000;
-        assertEq(maxAllowed, 140e6); // 100e6 * 1.40 = 140e6
     }
 
     // ============ VRF Fulfillment Tests ============
