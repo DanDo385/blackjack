@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/DanDo385/blackjack/backend/internal/contracts"
@@ -125,15 +125,15 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 
 	_ = common.HexToAddress(req.Token) // tokenAddr - stored for future contract calls
 
-	// Get table address from env
-	tableAddr := os.Getenv("TABLE_ADDRESS")
+	// Get table address from Foundry broadcast or env
+	tableAddr := contracts.GetTableAddress()
 	if tableAddr == "" {
 		// Fallback: return pending state without calling contract
 		handID := time.Now().Unix()
-		
+
 		// Save to Redis as pending
 		handState := map[string]interface{}{
-			"handId":      handID,
+			"handId":     handID,
 			"player":     playerAddr,
 			"token":      req.Token,
 			"amount":     amountWei.String(),
@@ -179,7 +179,7 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 
 	// Save to Redis and PostgreSQL
 	handState := map[string]interface{}{
-		"handId":      handID,
+		"handId":     handID,
 		"player":     playerAddr,
 		"token":      req.Token,
 		"amount":     amountWei.String(),
@@ -267,12 +267,12 @@ func PostResolve(w http.ResponseWriter, r *http.Request) {
 
 	// Return resolved state
 	resp := map[string]interface{}{
-		"handId":      result.HandID,
-		"outcome":     result.Outcome,
-		"payout":      result.Payout.String(),
-		"dealerHand":  result.DealerCards,
-		"playerHand":  result.PlayerCards,
-		"feeLink":     result.FeeLink.String(),
+		"handId":       result.HandID,
+		"outcome":      result.Outcome,
+		"payout":       result.Payout.String(),
+		"dealerHand":   result.DealerCards,
+		"playerHand":   result.PlayerCards,
+		"feeLink":      result.FeeLink.String(),
 		"feeNickelRef": result.FeeNickelRef.String(),
 	}
 
@@ -384,11 +384,15 @@ func PostInsurance(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostCashOut(w http.ResponseWriter, r *http.Request) {
+	log.Println("PostCashOut handler called")
 	var req ActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("PostCashOut: decode error: %v", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("PostCashOut: handId=%d", req.HandID)
 
 	// Cash out - return tokens to player
 	resp := map[string]any{
@@ -399,6 +403,5 @@ func PostCashOut(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+	log.Println("PostCashOut: response sent")
 }
-
-

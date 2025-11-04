@@ -3,7 +3,7 @@
 import { Toaster } from 'react-hot-toast'
 import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
-import { showWalletConnectedAlert } from '@/lib/alerts.ts'
+import { showWalletConnectedAlert } from '@/lib/alerts'
 
 /**
  * AlertBus - Component-level alert management

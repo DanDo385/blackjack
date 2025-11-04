@@ -5,14 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/DanDo385/blackjack/backend/internal/contracts"
 	"github.com/DanDo385/blackjack/backend/internal/handlers"
 	"github.com/DanDo385/blackjack/backend/internal/storage"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -42,23 +39,36 @@ func main() {
 		allowedOrigin = "http://localhost:3000"
 	}
 	
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{allowedOrigin},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not to exceed preflight request cache duration
-		Debug:            false, // Set to true for debugging CORS issues
-	}))
+	// r.Use(cors.Handler(cors.Options{ // Temporarily disabled
+	// 	AllowedOrigins:   []string{allowedOrigin},
+	// 	AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+	// 	AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+	// 	ExposedHeaders:   []string{"Link"},
+	// 	AllowCredentials: true,
+	// 	MaxAge:           300, // Maximum value not to exceed preflight request cache duration
+	// 	Debug:            false, // Set to true for debugging CORS issues
+	// }))
 	
-	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
+	// r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
+	// r.Use(middleware.Timeout(30 * time.Second)) // All middleware disabled
 
 	// Engine / Game
 	r.Get("/api/engine/state", handlers.GetEngineState)
 	r.Post("/api/engine/bet", handlers.PostBet)
 	r.Post("/api/game/resolve", handlers.PostResolve)
+
+	// Test route
+	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Test route called")
+		w.Write([]byte("test ok"))
+	})
+
+	// Test handler function
+	testHandler := func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Test handler called")
+		w.Write([]byte("handler ok"))
+	}
+	r.Get("/handler", testHandler)
 
 	// Game actions
 	r.Post("/api/game/hit", handlers.PostHit)
@@ -68,6 +78,8 @@ func main() {
 	r.Post("/api/game/insurance", handlers.PostInsurance)
 	r.Post("/api/game/cashout", handlers.PostCashOut)
 
+	log.Println("Registered game routes: /api/game/*")
+
 	// Treasury
 	r.Get("/api/treasury/overview", handlers.GetTreasuryOverview)
 
@@ -75,8 +87,8 @@ func main() {
 	r.Get("/api/user/summary", handlers.GetUserSummary)
 	r.Get("/api/user/hands", handlers.GetUserHands)
 
-	// Start event watcher if TABLE_ADDRESS is configured
-	tableAddr := os.Getenv("TABLE_ADDRESS")
+	// Start event watcher if TABLE_ADDRESS is configured (or found in Foundry broadcast)
+	tableAddr := contracts.GetTableAddress()
 	if tableAddr != "" {
 		watcher, err := contracts.NewEventWatcher(tableAddr)
 		if err != nil {
@@ -84,11 +96,26 @@ func main() {
 		} else {
 			ctx := context.Background()
 			watcher.Start(ctx)
-			log.Println("Event watcher started for table:", tableAddr)
+			log.Printf("Event watcher started for table: %s", tableAddr)
 			defer watcher.Stop()
 		}
+	} else {
+		log.Println("No TABLE_ADDRESS found - event watcher disabled (set TABLE_ADDRESS env var or deploy contracts)")
 	}
 
 	log.Println("dev api on :8080")
+	log.Printf("Router has routes registered")
+
+	// Test with standard http
+	http.HandleFunc("/standard", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Standard handler called")
+		w.Write([]byte("standard ok"))
+	})
+
+	log.Println("Starting standard server on :8081")
+	go func() {
+		log.Fatal(http.ListenAndServe(":8081", nil))
+	}()
+
 	http.ListenAndServe(":8080", r)
 }

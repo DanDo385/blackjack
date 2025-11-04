@@ -9,11 +9,22 @@ import { postJSON } from '@/lib/api'
  * GameActions Component
  *
  * Displays blackjack action buttons after tokens are brought to table
- * Color-coded: Green (Hit), Red (Stand), Yellow (Split), Purple (Double), Gray (Cash Out)
+ * Color-coded: Teal (Deal), Green (Hit), Red (Stand), Yellow (Split), Purple (Double), Gray (Cash Out)
  */
 export default function GameActions() {
   const router = useRouter()
-  const { tokensInPlay, tokenInPlay, handId, cashOut } = useStore()
+  const { 
+    tokensInPlay, 
+    tokenInPlay, 
+    handId, 
+    handDealt,
+    dealerHand,
+    playerHand,
+    cashOut, 
+    endHand,
+    setGameState,
+    resetHand
+  } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
 
   const handleAction = async (action: string) => {
@@ -24,7 +35,7 @@ export default function GameActions() {
 
     setLoading(action)
     try {
-      const response = await postJSON(`/api/game/${action}`, {
+      const response: any = await postJSON(`/api/game/${action}`, {
         handId,
         action,
       })
@@ -41,9 +52,47 @@ export default function GameActions() {
       if (response.message) {
         toast.success(response.message)
       }
+
+      // Check if hand is complete (Stand action)
+      if (action === 'stand') {
+        // End hand and show re-deal prompt
+        endHand()
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Action failed'
       toast.error(`Failed to ${action}: ${message}`)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleDeal = async () => {
+    setLoading('deal')
+    try {
+      // Call backend to deal hand
+      const response = await postJSON<{
+        handId?: number
+        dealerHand?: string[]
+        playerHand?: string[]
+        message?: string
+      }>('/api/engine/bet', {
+        amount: tokensInPlay,
+        token: tokenInPlay,
+      })
+
+      // Start game by dealing cards
+      if (response.handId) {
+        setGameState(
+          response.dealerHand || [],
+          response.playerHand || [],
+          response.handId
+        )
+      }
+
+      toast.success('Cards dealt ✅')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to deal'
+      toast.error(`Deal failed: ${message}`)
     } finally {
       setLoading(null)
     }
@@ -67,6 +116,14 @@ export default function GameActions() {
     }
   }
 
+  // Helper to determine if action is available
+  const canHit = handDealt && !loading
+  const canStand = handDealt && !loading
+  const canSplit = handDealt && playerHand.length === 2 && !loading // Only on initial deal
+  const canDouble = handDealt && playerHand.length === 2 && !loading // Only on initial deal
+  const canDeal = !handDealt && !loading
+  const canCashOut = !loading
+
   return (
     <div className="space-y-4">
       {/* Tokens at table display */}
@@ -76,43 +133,77 @@ export default function GameActions() {
         </div>
       </div>
 
-      {/* Game action buttons */}
-      <div className="flex flex-wrap gap-4">
-        <button
-          onClick={() => handleAction('hit')}
-          disabled={!!loading}
-          className="bg-green-500 hover:bg-green-600 disabled:bg-green-700 disabled:opacity-50 text-white px-6 py-3 rounded-2xl font-semibold transition"
-        >
-          {loading === 'hit' ? '...' : 'Hit'}
-        </button>
+      {/* Deal button - appears when no hand is dealt */}
+      {!handDealt && (
+        <div className="flex justify-center mb-4">
+          <button
+            onClick={handleDeal}
+            disabled={!canDeal}
+            className="bg-teal-500 hover:bg-teal-600 disabled:bg-teal-700 disabled:opacity-50 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all transform hover:scale-105"
+          >
+            {loading === 'deal' ? 'Dealing...' : 'Deal'}
+          </button>
+        </div>
+      )}
 
-        <button
-          onClick={() => handleAction('stand')}
-          disabled={!!loading}
-          className="bg-red-500 hover:bg-red-600 disabled:bg-red-700 disabled:opacity-50 text-white px-6 py-3 rounded-2xl font-semibold transition"
-        >
-          {loading === 'stand' ? '...' : 'Stand'}
-        </button>
+      {/* Game action buttons - appear after cards are dealt */}
+      {handDealt && (
+        <div className="flex flex-wrap gap-4 justify-center">
+          <button
+            onClick={() => handleAction('hit')}
+            disabled={!canHit}
+            className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
+              canHit 
+                ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {loading === 'hit' ? '...' : 'Hit'}
+          </button>
 
-        <button
-          onClick={() => handleAction('split')}
-          disabled={!!loading}
-          className="bg-yellow-400 hover:bg-yellow-500 disabled:bg-yellow-600 disabled:opacity-50 text-white px-6 py-3 rounded-2xl font-semibold transition"
-        >
-          {loading === 'split' ? '...' : 'Split'}
-        </button>
+          <button
+            onClick={() => handleAction('stand')}
+            disabled={!canStand}
+            className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
+              canStand 
+                ? 'bg-red-500 hover:bg-red-600 text-white transform hover:scale-105' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {loading === 'stand' ? '...' : 'Stand'}
+          </button>
 
-        <button
-          onClick={() => handleAction('double')}
-          disabled={!!loading}
-          className="bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-2xl font-semibold transition"
-        >
-          {loading === 'double' ? '...' : 'Double'}
-        </button>
+          <button
+            onClick={() => handleAction('split')}
+            disabled={!canSplit}
+            className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
+              canSplit 
+                ? 'bg-yellow-400 hover:bg-yellow-500 text-white transform hover:scale-105' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {loading === 'split' ? '...' : 'Split'}
+          </button>
 
+          <button
+            onClick={() => handleAction('double')}
+            disabled={!canDouble}
+            className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
+              canDouble 
+                ? 'bg-purple-500 hover:bg-purple-600 text-white transform hover:scale-105' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {loading === 'double' ? '...' : 'Double'}
+          </button>
+        </div>
+      )}
+
+      {/* Cash Out button - always available */}
+      <div className="flex justify-center mt-6">
         <button
           onClick={handleCashOut}
-          disabled={!!loading}
+          disabled={!canCashOut}
           className="bg-gray-700 hover:bg-gray-800 disabled:bg-gray-900 disabled:opacity-50 text-white px-6 py-3 rounded-2xl font-semibold transition"
         >
           {loading === 'cashout' ? '...' : 'Cash Out'}

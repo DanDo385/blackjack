@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { setBetAgainCallback } from '@/lib/alerts.ts'
+import { setBetAgainCallback } from '@/lib/alerts'
 
 /**
  * BetAgainHandler Component

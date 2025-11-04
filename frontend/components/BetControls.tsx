@@ -6,6 +6,7 @@ import { showTokensBroughtToTableAlert } from '@/lib/alerts'
 import { useStore } from '@/lib/store'
 import { postJSON } from '@/lib/api'
 import GameActions from './GameActions'
+import ReDealPrompt from './ReDealPrompt'
 
 /**
  * BetControls Component
@@ -59,9 +60,26 @@ export default function BetControls({
 }: BetControlsProps) {
   const [mounted, setMounted] = useState(false)
   const { address, isConnected } = useAccount()
-  const [inputValue, setInputValue] = useState<string>('')
   const [selectedToken, setSelectedToken] = useState<TokenSymbol>('USDC')
-  const { tokensInPlay, gameActive } = useStore()
+  const [isLoading, setIsLoading] = useState(false)
+  
+  const {
+    tokensInPlay,
+    tokenInPlay,
+    gameActive,
+    wager,
+    wagerStep,
+    lastWager,
+    showReDealPrompt,
+    handDealt,
+    setWager,
+    setWagerStep,
+    setLastWager,
+    setTokensInPlay,
+    setGameState,
+    closeReDealPrompt,
+    resetHand
+  } = useStore()
 
   // Prevent hydration mismatch with wallet hooks
   useEffect(() => {
@@ -108,7 +126,7 @@ export default function BetControls({
     const gameMax = Math.min(baseMax, growthMax)
 
     // Wallet balance rule
-    const walletBalance = selectedBalance ? Number(selectedBalance.formatted) : 0
+    const walletBalance = selectedBalance ? parseFloat(selectedBalance.value.toString()) / Math.pow(10, selectedBalance.decimals) : 0
     const bankrollMax = Math.floor(walletBalance * BANKROLL_CAP_PCT)
 
     // Final max is the minimum of all constraints
@@ -123,97 +141,91 @@ export default function BetControls({
 
   const step = Math.max(1, Math.round(anchor * 0.05))
 
-  // Parse user input
-  const betAmount = inputValue === '' ? 0 : Number(inputValue)
-
-  // Clamp bet to valid range
-  const clampedBet = Math.max(
-    maxBetByRules.baseMin,
-    Math.min(maxBetByRules.effective, betAmount)
-  )
-
-  // Validation checks
-  const isConnectedWarning = !isConnected
-  const isInsufficientBalance = betAmount > maxBetByRules.effective && betAmount > 0
-  const isDramaticWager = betAmount >= maxBetByRules.walletBalance * DRAMATIC_WAGER_PCT
-  const isValid =
-    isConnected &&
-    inputValue !== '' &&
-    betAmount > 0 &&
-    betAmount <= maxBetByRules.effective
-
-  // Suggest max bet button
-  const handleSuggestMax = () => {
-    setInputValue(maxBetByRules.effective.toString())
+  // Helper: Round to step
+  const roundToStep = (value: number, stepVal: number) => {
+    return Math.round(value / stepVal) * stepVal
   }
 
-  // Place bet handler - Phase 1: Bring tokens to table
-  const handlePlaceBet = async () => {
+  // Bring to table handler - commits tokens to the table
+  const handleBringToTable = async () => {
     if (!isConnected) {
       toast.error('Please connect your wallet first')
       return
     }
 
-    if (inputValue === '') {
-      toast.error('Please enter a bet amount')
+    if (wager <= 0) {
+      toast.error('Please enter a valid wager amount')
       return
     }
 
-    const finalBet = clampedBet
-
-    // Warn if auto-adjusted
-    if (finalBet !== betAmount) {
-      toast('Bet auto-adjusted to legal size', { icon: '⚠️' })
-    }
-
-    // Warn if dramatic wager
-    if (isDramaticWager) {
-      toast(`Dramatic wager: ${finalBet} ${selectedToken} (≥ 50% bankroll) 🔥`, {
-        icon: '🎭',
-        duration: 4000,
-      })
-    }
+    setIsLoading(true)
 
     try {
-      // Call backend to bring tokens to table
+      // Update store with tokens in play
+      setTokensInPlay(wager, selectedToken)
+
+      // Persist lastWager for next deal
+      setLastWager(wager)
+
+      // Show success alert
+      showTokensBroughtToTableAlert({
+        amount: wager,
+        token: selectedToken,
+      })
+
+      toast.success('Tokens brought to table ✅')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to bring tokens'
+      toast.error(`Failed: ${message}`)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Deal handler - deals cards for active game
+  const handleDeal = async () => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+
+    if (tokensInPlay <= 0) {
+      toast.error('No tokens at table')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Call backend to deal hand
       const response = await postJSON<{
         handId?: number
         dealerHand?: string[]
         playerHand?: string[]
         message?: string
       }>('/api/engine/bet', {
-        amount: finalBet,
-        token: selectedToken,
-      })
-
-      // Update store with tokens in play
-      useStore.getState().setTokensInPlay(finalBet, selectedToken)
-
-      // Update store with last bet
-      useStore.setState({ lastBet: finalBet })
-
-      // Show success alert
-      showTokensBroughtToTableAlert({
-        amount: finalBet,
-        token: selectedToken,
+        amount: tokensInPlay,
+        token: tokenInPlay,
       })
 
       // Start game by dealing cards
       if (response.handId) {
-        useStore.getState().setGameState(
+        setGameState(
           response.dealerHand || [],
           response.playerHand || [],
           response.handId
         )
       }
 
-      // Reset input
-      setInputValue('')
+      toast.success('Cards dealt ✅')
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Bet failed: ${message}`)
+      const message = error instanceof Error ? error.message : 'Failed to deal'
+      toast.error(`Deal failed: ${message}`)
+    } finally {
+      setIsLoading(false)
     }
   }
+
 
   // Render placeholder during SSR to prevent hydration mismatch
   if (!mounted) {
@@ -226,14 +238,116 @@ export default function BetControls({
     )
   }
 
-  // Phase 2: Show game actions if tokens are in play
-  if (gameActive && tokensInPlay > 0) {
-    return <GameActions />
+  // Re-deal handler - called when user accepts re-deal prompt
+  const handleReDeal = async (amount: number) => {
+    closeReDealPrompt()
+    resetHand() // Reset hand state
+    // Set wager to last amount
+    setWager(amount)
+    // Tokens are already at the table, just need to deal
   }
 
-  // Phase 1: Show betting interface
+  // Decline re-deal - keep lastWager as default
+  const handleDeclineReDeal = () => {
+    closeReDealPrompt()
+    resetHand() // Reset hand state
+    // lastWager is already persisted, do nothing
+  }
+
+  // Phase 2: Show game actions if tokens are in play
+  if (gameActive && tokensInPlay > 0) {
+    return (
+      <>
+        <ReDealPrompt
+          isOpen={showReDealPrompt}
+          lastWager={lastWager}
+          token={selectedToken}
+          onAccept={handleReDeal}
+          onDecline={handleDeclineReDeal}
+        />
+        <GameActions />
+      </>
+    )
+  }
+
+  // Phase 1: Show betting interface with wager controls
   return (
-    <div className="space-y-4">
+    <>
+      <ReDealPrompt
+        isOpen={showReDealPrompt}
+        lastWager={lastWager}
+        token={selectedToken}
+        onAccept={handleReDeal}
+        onDecline={handleDeclineReDeal}
+      />
+      <div className="space-y-4">
+      {/* Wager Controls Row */}
+      <div className="flex items-center gap-3 p-3 bg-neutral-900 border border-neutral-700 rounded-lg flex-wrap">
+        <span className="text-sm text-neutral-400 font-medium">Wager</span>
+
+        {/* Decrease button */}
+        <button
+          type="button"
+          aria-label="decrease wager"
+          className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50"
+          onClick={() => setWager(Math.max(0, roundToStep(wager - wagerStep, wagerStep)))}
+          disabled={!isConnected || isLoading}
+        >
+          –
+        </button>
+
+        {/* Wager amount input */}
+        <input
+          type="number"
+          inputMode="decimal"
+          className="w-28 px-3 py-2 rounded-xl bg-black border border-neutral-600 text-white font-mono focus:border-neutral-400 transition disabled:opacity-50"
+          value={String(wager)}
+          onChange={(e) => {
+            const v = Number(e.target.value.replace(/[^0-9.]/g, ''))
+            setWager(Number.isFinite(v) ? v : 0)
+          }}
+          disabled={!isConnected || isLoading}
+        />
+
+        {/* Increase button */}
+        <button
+          type="button"
+          aria-label="increase wager"
+          className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50"
+          onClick={() => setWager(roundToStep(wager + wagerStep, wagerStep))}
+          disabled={!isConnected || isLoading}
+        >
+          +
+        </button>
+
+        {/* Step input */}
+        <div className="flex items-center gap-2 ml-2">
+          <span className="text-sm text-neutral-400">Step</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            className="w-20 px-3 py-2 rounded-xl bg-black border border-neutral-600 text-white font-mono focus:border-neutral-400 transition disabled:opacity-50"
+            value={String(wagerStep)}
+            onChange={(e) => {
+              const s = Number(e.target.value.replace(/[^0-9.]/g, '')) || 1
+              setWagerStep(Math.max(0.0001, s))
+            }}
+            title="Increment for +/- buttons"
+            disabled={!isConnected || isLoading}
+          />
+        </div>
+
+        {/* Bring to Table button */}
+        <button
+          type="button"
+          className="ml-auto bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:opacity-50 text-white px-6 py-2 rounded-2xl font-semibold transition"
+          disabled={!isConnected || !wager || wager <= 0 || isLoading}
+          onClick={handleBringToTable}
+        >
+          {isLoading ? 'Processing…' : 'Bring to Table'}
+        </button>
+      </div>
+
       {/* Wallet Status */}
       {!isConnected ? (
         <div className="p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-sm text-amber-100">
@@ -248,31 +362,31 @@ export default function BetControls({
               <div className="flex justify-between">
                 <span className="text-neutral-400">ETH</span>
                 <span className="font-mono text-white">
-                  {(ethBalance ? Number(ethBalance.formatted) : 0).toFixed(4)} ETH
+                  {(ethBalance ? parseFloat(ethBalance.value.toString()) / Math.pow(10, ethBalance.decimals) : 0).toFixed(4)} ETH
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-400">wETH</span>
                 <span className="font-mono text-white">
-                  {(wethBalance ? Number(wethBalance.formatted) : 0).toFixed(4)} wETH
+                  {(wethBalance ? parseFloat(wethBalance.value.toString()) / Math.pow(10, wethBalance.decimals) : 0).toFixed(4)} wETH
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-400">wBTC</span>
                 <span className="font-mono text-white">
-                  {(wbtcBalance ? Number(wbtcBalance.formatted) : 0).toFixed(6)} wBTC
+                  {(wbtcBalance ? parseFloat(wbtcBalance.value.toString()) / Math.pow(10, wbtcBalance.decimals) : 0).toFixed(6)} wBTC
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-400">USDC</span>
                 <span className="font-mono text-white">
-                  {(usdcBalance ? Number(usdcBalance.formatted) : 0).toFixed(2)} USDC
+                  {(usdcBalance ? parseFloat(usdcBalance.value.toString()) / Math.pow(10, usdcBalance.decimals) : 0).toFixed(2)} USDC
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-400">USDT</span>
                 <span className="font-mono text-white">
-                  {(usdtBalance ? Number(usdtBalance.formatted) : 0).toFixed(2)} USDT
+                  {(usdtBalance ? parseFloat(usdtBalance.value.toString()) / Math.pow(10, usdtBalance.decimals) : 0).toFixed(2)} USDT
                 </span>
               </div>
             </div>
@@ -304,81 +418,8 @@ export default function BetControls({
           </div>
         </>
       )}
-
-      {/* Bet Input */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-white">Bet Amount</label>
-        <div className="flex gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder={
-              isConnected
-                ? `Min: ${maxBetByRules.baseMin} • Max: ${maxBetByRules.effective}`
-                : 'Connect wallet'
-            }
-            disabled={!isConnected}
-            step={step}
-            min={0}
-            className={`flex-1 border rounded-lg px-3 py-2 font-mono ${
-              isConnected
-                ? 'bg-black text-white border-neutral-600 focus:border-neutral-400'
-                : 'bg-neutral-900 text-neutral-500 border-neutral-700 cursor-not-allowed'
-            }`}
-          />
-          <button
-            onClick={handleSuggestMax}
-            disabled={!isConnected}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              isConnected
-                ? 'bg-neutral-800 text-white hover:bg-neutral-700'
-                : 'bg-neutral-900 text-neutral-500 cursor-not-allowed'
-            }`}
-          >
-            Max
-          </button>
-        </div>
-
-        {/* Validation Messages */}
-        {inputValue !== '' && (
-          <div className="text-xs space-y-1">
-            {isInsufficientBalance && (
-              <div className="text-red-400">
-                ⚠️ Bet exceeds bankroll limit ({maxBetByRules.effective} {selectedToken} max)
-              </div>
-            )}
-            {isDramaticWager && !isInsufficientBalance && (
-              <div className="text-amber-400">
-                🔥 Dramatic wager: {betAmount} ≥ 50% of your bankroll
-              </div>
-            )}
-            {!isInsufficientBalance && clampedBet !== betAmount && betAmount > 0 && (
-              <div className="text-blue-400">
-                ℹ️ Auto-adjust: {betAmount} → {clampedBet} {selectedToken}
-              </div>
-            )}
-            {isValid && !isDramaticWager && (
-              <div className="text-green-400">✓ Valid bet</div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Place Bet Button */}
-      <button
-        onClick={handlePlaceBet}
-        disabled={!isValid}
-        className={`w-full px-4 py-3 rounded-xl font-semibold transition ${
-          isValid
-            ? 'bg-green-600 text-white hover:bg-green-700'
-            : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
-        }`}
-      >
-        {!isConnected ? 'Connect Wallet' : 'Place Bet'}
-      </button>
     </div>
+    </>
   )
 }
 

@@ -26,13 +26,21 @@ export type GameState = {
   runningCount: number
   decks: number
 
+  // Wager controls (for UX)
+  lastWager: number    // Persisted default wager
+  wager: number        // Current wager input
+  wagerStep: number    // Increment step for +/- buttons
+
   // Game state
   tokensInPlay: number
   tokenInPlay: string // Token symbol (ETH, USDC, etc.)
+  selectedToken: string // Currently selected token for betting
   gameActive: boolean
   dealerHand: string[] // Card image paths
   playerHand: string[] // Card image paths
   handId: number | null
+  showReDealPrompt: boolean // Show re-deal prompt after hand ends
+  handDealt: boolean // Whether cards have been dealt
 
   // Actions
   newShoe: () => void
@@ -40,9 +48,15 @@ export type GameState = {
   setTokensInPlay: (amount: number, token: string) => void
   cashOut: () => void
   setGameState: (dealerHand: string[], playerHand: string[], handId: number) => void
+  setWager: (value: number) => void
+  setWagerStep: (value: number) => void
+  setLastWager: (value: number) => void
+  endHand: () => void // Ends hand and shows re-deal prompt
+  closeReDealPrompt: () => void
+  resetHand: () => void // Resets hand state for new deal
 }
 
-const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInPlay' | 'cashOut' | 'setGameState'> = {
+const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInPlay' | 'cashOut' | 'setGameState' | 'setWager' | 'setWagerStep' | 'setLastWager' | 'endHand' | 'closeReDealPrompt' | 'resetHand'> = {
   // Start with 0% shoe dealt, 0 true count
   trueCount: 0,
   shoePct: 0,
@@ -60,29 +74,54 @@ const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInP
   runningCount: 0,
   decks: 7,
 
+  // Wager controls (loaded from localStorage if available)
+  lastWager: 1,
+  wager: 1,
+  wagerStep: 1,
+
   // Game state
   tokensInPlay: 0,
   tokenInPlay: '',
+  selectedToken: 'USDC',
   gameActive: false,
   dealerHand: [],
   playerHand: [],
   handId: null,
+  showReDealPrompt: false,
+  handDealt: false,
 }
 
-export const useStore = create<GameState>((set) => ({
-  ...INITIAL_STATE,
+export const useStore = create<GameState>((set, get) => {
+  // Hydrate lastWager from localStorage on client
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('lastWager')
+      if (stored != null) {
+        const parsed = Number(stored)
+        if (Number.isFinite(parsed) && parsed > 0) {
+          INITIAL_STATE.lastWager = parsed
+          INITIAL_STATE.wager = parsed
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to hydrate lastWager from localStorage:', error)
+    }
+  }
 
-  /**
-   * Reset to a new shoe (called at start or after reshuffle at 67%)
-   */
-  newShoe: () =>
-    set({
-      cardsDealt: 0,
-      runningCount: 0,
-      trueCount: 0,
-      shoePct: 0,
-      // Keep betting params
-    }),
+  return {
+    ...INITIAL_STATE,
+
+    /**
+     * Reset to a new shoe (called at start or after reshuffle at 67%)
+     */
+    newShoe: () =>
+      set({
+        cardsDealt: 0,
+        runningCount: 0,
+        trueCount: 0,
+        shoePct: 0,
+        // Keep betting params
+      }),
 
   /**
    * Reset counting without changing betting state
@@ -102,6 +141,7 @@ export const useStore = create<GameState>((set) => ({
     set({
       tokensInPlay: amount,
       tokenInPlay: token,
+      selectedToken: token,
       gameActive: true,
     }),
 
@@ -116,6 +156,7 @@ export const useStore = create<GameState>((set) => ({
       dealerHand: [],
       playerHand: [],
       handId: null,
+      handDealt: false,
     }),
 
   /**
@@ -127,8 +168,70 @@ export const useStore = create<GameState>((set) => ({
       playerHand,
       handId,
       gameActive: true,
+      handDealt: true,
     }),
-}))
+
+  /**
+   * Set current wager value
+   */
+  setWager: (value: number) =>
+    set({
+      wager: Math.max(0, value),
+    }),
+
+  /**
+   * Set wager increment step
+   */
+  setWagerStep: (value: number) =>
+    set({
+      wagerStep: Math.max(0.0001, value),
+    }),
+
+  /**
+   * Set last wager (persisted default)
+   */
+  setLastWager: (value: number) => {
+    set({ lastWager: value })
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('lastWager', String(value))
+      } catch (error) {
+        console.warn('Failed to save lastWager to localStorage:', error)
+      }
+    }
+  },
+
+  /**
+   * End hand and show re-deal prompt
+   */
+  endHand: () =>
+    set({
+      gameActive: false,
+      handDealt: false,
+      showReDealPrompt: true,
+    }),
+
+    /**
+     * Close re-deal prompt
+     */
+    closeReDealPrompt: () =>
+      set({
+        showReDealPrompt: false,
+      }),
+
+    /**
+     * Reset hand state for new deal
+     */
+    resetHand: () =>
+      set({
+        dealerHand: [],
+        playerHand: [],
+        handId: null,
+        handDealt: false,
+      }),
+  }
+})
 
 /**
  * Derived selector: True Count
