@@ -142,7 +142,7 @@ export const useStore = create<GameState>((set, get) => {
       tokensInPlay: amount,
       tokenInPlay: token,
       selectedToken: token,
-      gameActive: true,
+      gameActive: amount > 0,
     }),
 
   /**
@@ -261,5 +261,4 @@ export const useShoeDealtPct = () => {
   if (cardsDealt === 0) return 0
   return Math.round((cardsDealt / (decks * 52)) * 100)
 }
-
 

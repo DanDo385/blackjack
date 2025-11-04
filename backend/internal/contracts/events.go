@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,13 +43,18 @@ type EventWatcher struct {
 // NewEventWatcher creates a new event watcher for the Table contract
 func NewEventWatcher(tableAddress string) (*EventWatcher, error) {
 	rpcURL := os.Getenv("RPC_URL")
-	if rpcURL == "" {
-		rpcURL = "http://localhost:8545"
+	wsURL := os.Getenv("WS_RPC_URL")
+
+	if wsURL == "" {
+		wsURL = deriveWebsocketURL(rpcURL)
+	}
+	if wsURL == "" {
+		wsURL = "ws://localhost:8545"
 	}
 
-	client, err := ethclient.Dial(rpcURL)
+	client, err := ethclient.Dial(wsURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to ethereum client: %w", err)
+		return nil, fmt.Errorf("failed to connect to ethereum client using websockets (%s): %w", wsURL, err)
 	}
 
 	return &EventWatcher{
@@ -56,6 +62,24 @@ func NewEventWatcher(tableAddress string) (*EventWatcher, error) {
 		tableAddr: common.HexToAddress(tableAddress),
 		stopChan:  make(chan struct{}),
 	}, nil
+}
+
+// deriveWebsocketURL converts an HTTP RPC endpoint to its WebSocket equivalent if needed.
+func deriveWebsocketURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	switch {
+	case raw == "":
+		return ""
+	case strings.HasPrefix(raw, "ws://"), strings.HasPrefix(raw, "wss://"):
+		return raw
+	case strings.HasPrefix(raw, "http://"):
+		return "ws://" + strings.TrimPrefix(raw, "http://")
+	case strings.HasPrefix(raw, "https://"):
+		return "wss://" + strings.TrimPrefix(raw, "https://")
+	default:
+		// Assume bare host:port should use ws://
+		return "ws://" + raw
+	}
 }
 
 // Start begins watching for events in a goroutine
@@ -159,7 +183,7 @@ func (ew *EventWatcher) handleHandStarted(ctx context.Context, logEntry types.Lo
 
 	// Cache in Redis
 	handState := map[string]interface{}{
-		"handId":      handID,
+		"handId":     handID,
 		"player":     playerAddr.Hex(),
 		"token":      tokenAddr.Hex(),
 		"amount":     amount.String(),
@@ -275,4 +299,3 @@ func (ew *EventWatcher) resolveHand(ctx context.Context, handID int64, seed []by
 
 	log.Printf("Hand %d resolved: %s, payout=%s", handID, result.Outcome, result.Payout.String())
 }
-

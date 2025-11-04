@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useAccount } from 'wagmi'
 import { useStore } from '@/lib/store'
@@ -36,6 +36,7 @@ export default function PlayBetControls() {
     setWager,
     setWagerStep,
     setGameState,
+    setTokensInPlay,
   } = useStore()
 
   // Prevent hydration mismatch
@@ -61,6 +62,28 @@ export default function PlayBetControls() {
   const roundToStep = (value: number, stepVal: number) => {
     return Math.round(value / stepVal) * stepVal
   }
+
+  const applyWager = useCallback(
+    (value: number) => {
+      const numeric = Number.isFinite(value) ? value : 0
+      const positive = Math.max(0, numeric)
+      const capped = Math.min(positive, bettingLimits.max)
+
+      setWager(capped)
+
+      if (selectedToken) {
+        setTokensInPlay(capped, selectedToken)
+      }
+    },
+    [bettingLimits.max, selectedToken, setTokensInPlay, setWager]
+  )
+
+  // Keep wager aligned with tokens when external updates occur
+  useEffect(() => {
+    if (!handDealt && tokensInPlay !== wager) {
+      setWager(tokensInPlay)
+    }
+  }, [handDealt, setWager, tokensInPlay, wager])
 
   // Deal handler
   const handleDeal = async () => {
@@ -162,8 +185,10 @@ export default function PlayBetControls() {
             type="button"
             aria-label="decrease wager"
             className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50"
-            onClick={() => setWager(Math.max(0, roundToStep(wager - wagerStep, wagerStep)))}
-            disabled={isLoading || gameActive || handDealt}
+            onClick={() =>
+              applyWager(Math.max(0, roundToStep(wager - wagerStep, wagerStep)))
+            }
+            disabled={isLoading || handDealt}
           >
             −
           </button>
@@ -176,9 +201,9 @@ export default function PlayBetControls() {
             value={String(wager)}
             onChange={(e) => {
               const v = Number(e.target.value.replace(/[^0-9.]/g, ''))
-              setWager(Number.isFinite(v) ? Math.min(v, bettingLimits.max) : 0)
+              applyWager(Number.isFinite(v) ? v : 0)
             }}
-            disabled={isLoading || gameActive || handDealt}
+            disabled={isLoading || handDealt}
           />
 
           {/* Increase button */}
@@ -186,8 +211,10 @@ export default function PlayBetControls() {
             type="button"
             aria-label="increase wager"
             className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50"
-            onClick={() => setWager(Math.min(roundToStep(wager + wagerStep, wagerStep), bettingLimits.max))}
-            disabled={isLoading || gameActive || handDealt}
+            onClick={() =>
+              applyWager(Math.min(roundToStep(wager + wagerStep, wagerStep), bettingLimits.max))
+            }
+            disabled={isLoading || handDealt}
           >
             +
           </button>
@@ -205,7 +232,7 @@ export default function PlayBetControls() {
               const s = Number(e.target.value.replace(/[^0-9.]/g, '')) || 1
               setWagerStep(Math.max(0.0001, s))
             }}
-            disabled={isLoading || gameActive || handDealt}
+            disabled={isLoading || handDealt}
           />
         </div>
 
@@ -237,7 +264,6 @@ export default function PlayBetControls() {
           wager < bettingLimits.min ||
           wager > bettingLimits.max ||
           isLoading ||
-          gameActive ||
           handDealt
         }
         onClick={handleDeal}
