@@ -12,7 +12,6 @@ import (
 
 	"github.com/DanDo385/blackjack/backend/internal/contracts"
 	"github.com/DanDo385/blackjack/backend/internal/game"
-	"github.com/DanDo385/blackjack/backend/internal/storage"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -131,17 +130,6 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 		// Fallback: return pending state without calling contract
 		handID := time.Now().Unix()
 
-		// Save to Redis as pending
-		handState := map[string]interface{}{
-			"handId":     handID,
-			"player":     playerAddr,
-			"token":      req.Token,
-			"amount":     amountWei.String(),
-			"status":     "pending_contract",
-			"created_at": time.Now().Unix(),
-		}
-		storage.SetHandState(ctx, handID, handState, 30*time.Minute)
-
 		resp := map[string]interface{}{
 			"handId":  handID,
 			"status":  "pending",
@@ -177,24 +165,6 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 	// Note: This requires ABI bindings - for now return pending state
 	handID := time.Now().Unix()
 
-	// Save to Redis and PostgreSQL
-	handState := map[string]interface{}{
-		"handId":     handID,
-		"player":     playerAddr,
-		"token":      req.Token,
-		"amount":     amountWei.String(),
-		"status":     "pending_randomness",
-		"created_at": time.Now().Unix(),
-	}
-	storage.SetHandState(ctx, handID, handState, 30*time.Minute)
-
-	// Save to PostgreSQL
-	err = storage.SaveHandStart(ctx, handID, playerAddr, req.Token, amountWei.String(), "")
-	if err != nil {
-		// Log but don't fail request
-		fmt.Printf("Warning: Failed to save hand to PostgreSQL: %v\n", err)
-	}
-
 	resp := map[string]interface{}{
 		"handId":  handID,
 		"status":  "pending",
@@ -206,8 +176,6 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 
 // PostResolve resolves a hand using stored VRF seed
 func PostResolve(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
 	var req struct {
 		HandID int64 `json:"handId"`
 	}
@@ -217,30 +185,14 @@ func PostResolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get hand state from Redis
-	handState, err := storage.GetHandState(ctx, req.HandID)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Hand not found: %v", err), http.StatusNotFound)
-		return
-	}
+	// For demo purposes, generate a random seed
+	seed := make([]byte, 32)
+	rand.Read(seed)
 
-	seedHex, ok := handState["seed"].(string)
-	if !ok || seedHex == "" {
-		http.Error(w, "Hand randomness not yet fulfilled", http.StatusBadRequest)
-		return
-	}
-
-	// Decode seed
-	seed, err := hex.DecodeString(seedHex)
-	if err != nil || len(seed) != 32 {
-		http.Error(w, "Invalid seed format", http.StatusBadRequest)
-		return
-	}
-
-	// Get hand details
-	playerAddr, _ := handState["player"].(string)
-	tokenAddr, _ := handState["token"].(string)
-	amountStr, _ := handState["amount"].(string)
+	// Mock hand details
+	playerAddr := "0x0000000000000000000000000000000000000000"
+	tokenAddr := "0x0000000000000000000000000000000000000000"
+	amountStr := "1000000000000000000" // 1 token
 
 	// Resolve hand using game engine
 	result, err := game.ResolveHand(req.HandID, playerAddr, tokenAddr, amountStr, seed)
@@ -248,22 +200,6 @@ func PostResolve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to resolve hand: %v", err), http.StatusInternalServerError)
 		return
 	}
-
-	// Save result to PostgreSQL
-	err = storage.SaveHandResult(ctx, result)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to save result: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	// Update Redis
-	storage.UpdateHandState(ctx, req.HandID, map[string]interface{}{
-		"status":      "resolved",
-		"result":      result.Outcome,
-		"payout":      result.Payout.String(),
-		"dealerCards": result.DealerCards,
-		"playerCards": result.PlayerCards,
-	}, 15*time.Minute)
 
 	// Return resolved state
 	resp := map[string]interface{}{

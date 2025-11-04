@@ -8,7 +8,6 @@ import (
 
 	"github.com/DanDo385/blackjack/backend/internal/contracts"
 	"github.com/DanDo385/blackjack/backend/internal/handlers"
-	"github.com/DanDo385/blackjack/backend/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 )
@@ -19,16 +18,6 @@ func main() {
 	_ = godotenv.Load("../.env")
 	// Fallback to current directory if .env is in backend/
 	_ = godotenv.Load()
-	// Initialize databases
-	if err := storage.InitPostgres(); err != nil {
-		log.Fatalf("Failed to init postgres: %v", err)
-	}
-	defer storage.ClosePostgres()
-
-	if err := storage.InitRedis(); err != nil {
-		log.Fatalf("Failed to init redis: %v", err)
-	}
-	defer storage.CloseRedis()
 
 	r := chi.NewRouter()
 	

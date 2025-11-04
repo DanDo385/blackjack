@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/DanDo385/blackjack/backend/internal/game"
-	"github.com/DanDo385/blackjack/backend/internal/storage"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -173,25 +172,7 @@ func (ew *EventWatcher) handleHandStarted(ctx context.Context, logEntry types.Lo
 	log.Printf("HandStarted: handId=%s, player=%s, token=%s, amount=%s, vrfReqId=%s",
 		handId.String(), playerAddr.Hex(), tokenAddr.Hex(), amount.String(), hex.EncodeToString(vrfReqId))
 
-	// Save hand to PostgreSQL
-	handID := handId.Int64()
-	err := storage.SaveHandStart(ctx, handID, playerAddr.Hex(), tokenAddr.Hex(), amount.String(), hex.EncodeToString(vrfReqId))
-	if err != nil {
-		log.Printf("Failed to save hand start: %v", err)
-		return
-	}
-
-	// Cache in Redis
-	handState := map[string]interface{}{
-		"handId":     handID,
-		"player":     playerAddr.Hex(),
-		"token":      tokenAddr.Hex(),
-		"amount":     amount.String(),
-		"vrfReqId":   hex.EncodeToString(vrfReqId),
-		"status":     "pending_randomness",
-		"created_at": time.Now().Unix(),
-	}
-	storage.SetHandState(ctx, handID, handState, 30*time.Minute)
+	// Event logged only (no database storage)
 }
 
 // handleRandomFulfilled processes RandomFulfilled events
@@ -207,11 +188,8 @@ func (ew *EventWatcher) handleRandomFulfilled(ctx context.Context, logEntry type
 
 	log.Printf("RandomFulfilled: handId=%s, seed=%s", handId.String(), hex.EncodeToString(seed))
 
-	// Update Redis with seed
+	// Trigger async hand resolution (demo only, no storage)
 	handID := handId.Int64()
-	storage.UpdateHandSeed(ctx, handID, hex.EncodeToString(seed))
-
-	// Trigger async hand resolution
 	go ew.resolveHand(ctx, handID, seed)
 }
 
@@ -229,17 +207,11 @@ func (ew *EventWatcher) handleHandSettled(ctx context.Context, logEntry types.Lo
 	// Decode data: pnl (int256), payoutToken (address), payoutAmount (uint256), feeLink (uint256), feeNickelRef (uint256)
 	data := logEntry.Data
 	pnl := new(big.Int).SetBytes(data[0:32])
-	_ = common.BytesToAddress(data[32:64]) // payoutToken - stored but not used here
+	_ = common.BytesToAddress(data[32:64]) // payoutToken
 	payoutAmount := new(big.Int).SetBytes(data[64:96])
 	feeLink := new(big.Int).SetBytes(data[96:128])
 	feeNickelRef := new(big.Int).SetBytes(data[128:160])
 
-	log.Printf("HandSettled: handId=%s, player=%s, pnl=%s, payout=%s, fees=%s/%s",
-		handId.String(), playerAddr.Hex(), pnl.String(), payoutAmount.String(), feeLink.String(), feeNickelRef.String())
-
-	// Update hand in PostgreSQL
-	handID := handId.Int64()
-	now := time.Now()
 	result := "lose"
 	if pnl.Sign() > 0 {
 		result = "win"
@@ -247,32 +219,20 @@ func (ew *EventWatcher) handleHandSettled(ctx context.Context, logEntry types.Lo
 		result = "push"
 	}
 
-	err := storage.UpdateHandSettlement(ctx, handID, result, payoutAmount.String(), feeLink.String(), feeNickelRef.String(), &now)
-	if err != nil {
-		log.Printf("Failed to update hand settlement: %v", err)
-	}
+	log.Printf("HandSettled: handId=%s, player=%s, result=%s, pnl=%s, payout=%s, fees=%s/%s",
+		handId.String(), playerAddr.Hex(), result, pnl.String(), payoutAmount.String(), feeLink.String(), feeNickelRef.String())
 
-	// Update user metrics
-	go storage.UpdateUserMetricsAsync(ctx, playerAddr.Hex())
-
-	// Clean up Redis cache (optional - could keep for history)
-	storage.DeleteHandState(ctx, handID)
+	// Event logged only (no database storage)
 }
 
 // resolveHand resolves a hand using the VRF seed
 func (ew *EventWatcher) resolveHand(ctx context.Context, handID int64, seed []byte) {
 	log.Printf("Resolving hand %d with seed %s", handID, hex.EncodeToString(seed))
 
-	// Get hand state from Redis
-	handState, err := storage.GetHandState(ctx, handID)
-	if err != nil {
-		log.Printf("Failed to get hand state: %v", err)
-		return
-	}
-
-	playerAddr, _ := handState["player"].(string)
-	tokenAddr, _ := handState["token"].(string)
-	amountStr, _ := handState["amount"].(string)
+	// Mock hand details for demo
+	playerAddr := "0x0000000000000000000000000000000000000000"
+	tokenAddr := "0x0000000000000000000000000000000000000000"
+	amountStr := "1000000000000000000" // 1 token
 
 	// Resolve hand using game engine
 	result, err := game.ResolveHand(handID, playerAddr, tokenAddr, amountStr, seed)
@@ -280,22 +240,6 @@ func (ew *EventWatcher) resolveHand(ctx context.Context, handID int64, seed []by
 		log.Printf("Failed to resolve hand: %v", err)
 		return
 	}
-
-	// Save result to PostgreSQL
-	err = storage.SaveHandResult(ctx, result)
-	if err != nil {
-		log.Printf("Failed to save hand result: %v", err)
-		return
-	}
-
-	// Update Redis with resolved state
-	storage.UpdateHandState(ctx, handID, map[string]interface{}{
-		"status":      "resolved",
-		"result":      result.Outcome,
-		"payout":      result.Payout.String(),
-		"dealerCards": result.DealerCards,
-		"playerCards": result.PlayerCards,
-	}, 15*time.Minute)
 
 	log.Printf("Hand %d resolved: %s, payout=%s", handID, result.Outcome, result.Payout.String())
 }
