@@ -135,8 +135,12 @@ if [[ ! -d "$ROOT_DIR/frontend/node_modules" ]]; then
 fi
 
 echo "Starting Go API server..."
-(cd "$ROOT_DIR/backend" && go run ./cmd/api) &
+export POSTGRES_DSN="postgresql://postgres:postgres@localhost:5432/yolo?sslmode=disable"
+export REDIS_ADDR="localhost:6379"
+(cd "$ROOT_DIR/backend" && go run ./cmd/api > /tmp/blackjack-api.log 2>&1) &
 BACKEND_PID=$!
+echo "Go API logs: tail -f /tmp/blackjack-api.log"
+sleep 2
 
 start_anvil() {
   echo "Starting Anvil local chain..."
@@ -160,62 +164,74 @@ TREASURY_ADDR="${TREASURY_ADDR:-$TREASURY_ADDR_DEFAULT}"
 export PRIVATE_KEY
 
 echo "Compiling and deploying contracts to local Anvil..."
-FACTORY_OUTPUT=$(cd "$ROOT_DIR/contracts" && forge script script/DeployFactory.s.sol --rpc-url "$RPC_URL" --broadcast --private-key "$PRIVATE_KEY" --skip-simulation 2>&1 | sanitize_output)
+echo "Running: forge script script/DeployFactory.s.sol..."
+
+# Run with timeout (30 seconds should be plenty for local Anvil)
+set +e
+FACTORY_OUTPUT=$(timeout 30s bash -c "cd '$ROOT_DIR/contracts' && forge script script/DeployFactory.s.sol --rpc-url '$RPC_URL' --broadcast --private-key '$PRIVATE_KEY' --skip-simulation 2>&1" | sanitize_output)
+FACTORY_DEPLOY_STATUS=$?
+set -e
+
+if [ $FACTORY_DEPLOY_STATUS -eq 124 ]; then
+  echo "Factory deployment timed out after 30 seconds" >&2
+  exit 1
+elif [ $FACTORY_DEPLOY_STATUS -ne 0 ]; then
+  echo "Factory deployment failed with exit code: $FACTORY_DEPLOY_STATUS"
+  echo "Output:"
+  echo "$FACTORY_OUTPUT"
+  exit 1
+fi
+
+echo "Factory deployment completed successfully"
+
 FACTORY_ADDR=$(echo "$FACTORY_OUTPUT" | sed -En 's/.*Factory: *(0x[0-9a-fA-F]{40}).*/\1/p' | tail -n1)
 if [[ -z "$FACTORY_ADDR" ]]; then
+  echo "Factory deployment output:"
   echo "$FACTORY_OUTPUT"
   echo "Failed to retrieve factory address from deployment." >&2
   exit 1
 fi
 
-echo "Factory deployed at $FACTORY_ADDR"
+echo "✓ Factory deployed at $FACTORY_ADDR"
 
 # Wait a moment for Anvil to process the transaction
 sleep 2
 
 echo "Deploying tables..."
-set +e  # Temporarily disable exit on error to capture output
-TABLE_OUTPUT=$(cd "$ROOT_DIR/contracts" && FACTORY_ADDR="$FACTORY_ADDR" TREASURY_ADDR="$TREASURY_ADDR" forge script script/DeployTables.s.sol --rpc-url "$RPC_URL" --broadcast --private-key "$PRIVATE_KEY" --skip-simulation 2>&1 | sanitize_output)
+set +e
+TABLE_OUTPUT=$(timeout 30s bash -c "cd '$ROOT_DIR/contracts' && FACTORY_ADDR='$FACTORY_ADDR' TREASURY_ADDR='$TREASURY_ADDR' forge script script/DeployTables.s.sol --rpc-url '$RPC_URL' --broadcast --private-key '$PRIVATE_KEY' --skip-simulation 2>&1" | sanitize_output)
 TABLE_EXIT_CODE=$?
-set -e  # Re-enable exit on error
+set -e
 
-# Debug: show table output
-echo "Table deployment exit code: $TABLE_EXIT_CODE"
-echo "Table deployment output (first 50 lines):"
-echo "$TABLE_OUTPUT" | head -n 50
-
-if [ $TABLE_EXIT_CODE -ne 0 ]; then
-  echo ""
-  echo "Table deployment failed. Full output:"
+if [ $TABLE_EXIT_CODE -eq 124 ]; then
+  echo "Table deployment timed out after 30 seconds" >&2
+  exit 1
+elif [ $TABLE_EXIT_CODE -ne 0 ]; then
+  echo "Table deployment failed with exit code: $TABLE_EXIT_CODE"
+  echo "Full output:"
   echo "$TABLE_OUTPUT"
-  echo ""
   exit 1
 fi
 
-STD_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | sed -En 's/.*Standard Table: *(0x[0-9a-fA-F]{40}).*/\1/p' | tail -n1)
-PREM_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | sed -En 's/.*Premier Table: *(0x[0-9a-fA-F]{40}).*/\1/p' | tail -n1)
+echo "Table deployment completed successfully"
 
-# Try alternative patterns (using sed for macOS compatibility)
-if [[ -z "$STD_TABLE_ADDR" ]]; then
-  STD_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | grep -i "standard" | sed -En 's/.*(0x[0-9a-fA-F]{40}).*/\1/p' | head -n1)
-fi
-if [[ -z "$PREM_TABLE_ADDR" ]]; then
-  PREM_TABLE_ADDR=$(echo "$TABLE_OUTPUT" | grep -i "premier" | sed -En 's/.*(0x[0-9a-fA-F]{40}).*/\1/p' | head -n1)
-fi
+# Parse table address (deployment script outputs "Table: 0x...")
+TABLE_ADDR=$(echo "$TABLE_OUTPUT" | sed -En 's/.*Table: *(0x[0-9a-fA-F]{40}).*/\1/p' | tail -n1)
 
-if [[ -z "$STD_TABLE_ADDR" || -z "$PREM_TABLE_ADDR" ]]; then
+if [[ -z "$TABLE_ADDR" ]]; then
   echo ""
   echo "Full table deployment output:"
   echo "$TABLE_OUTPUT"
   echo ""
-  echo "Failed to retrieve table addresses from deployment." >&2
-  echo "STD_TABLE_ADDR: ${STD_TABLE_ADDR:-empty}"
-  echo "PREM_TABLE_ADDR: ${PREM_TABLE_ADDR:-empty}"
+  echo "Failed to retrieve table address from deployment." >&2
   exit 1
 fi
 
-echo "Standard table deployed at $STD_TABLE_ADDR"
-echo "Premier table deployed at $PREM_TABLE_ADDR"
+echo "✓ Table deployed at $TABLE_ADDR"
+
+# For now, use the same table for both standard and premium
+STD_TABLE_ADDR="$TABLE_ADDR"
+PREM_TABLE_ADDR="$TABLE_ADDR"
 
 echo "Updating frontend contract addresses..."
 cat > "$ROOT_DIR/frontend/lib/contracts.ts" <<CONTRACTS_EOF
@@ -260,8 +276,10 @@ echo "Starting Next.js frontend..."
 # Kill any existing process on port 3000
 lsof -ti:3000 | xargs kill -9 >/dev/null 2>&1 || true
 sleep 1
-(cd "$ROOT_DIR/frontend" && npm run dev) &
+(cd "$ROOT_DIR/frontend" && npm run dev > /tmp/blackjack-frontend.log 2>&1) &
 FRONTEND_PID=$!
+echo "Frontend logs: tail -f /tmp/blackjack-frontend.log"
+sleep 3
 
 echo "\nAll services are running:"
 printf '  %-25s %s\n' "PostgreSQL" "localhost:5432"
