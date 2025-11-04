@@ -106,16 +106,5 @@ func main() {
 	log.Println("dev api on :8080")
 	log.Printf("Router has routes registered")
 
-	// Test with standard http
-	http.HandleFunc("/standard", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Standard handler called")
-		w.Write([]byte("standard ok"))
-	})
-
-	log.Println("Starting standard server on :8081")
-	go func() {
-		log.Fatal(http.ListenAndServe(":8081", nil))
-	}()
-
-	http.ListenAndServe(":8080", r)
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
