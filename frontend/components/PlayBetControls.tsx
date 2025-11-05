@@ -3,7 +3,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useAccount } from 'wagmi'
 import { useStore } from '@/lib/store'
-import { postJSON } from '@/lib/api'
+import { placeBet } from '@/lib/api'
+import { shouldShowDealButton } from '@/lib/types'
 
 /**
  * PlayBetControls Component
@@ -11,7 +12,7 @@ import { postJSON } from '@/lib/api'
  * Shown on /play page after tokens are brought to table.
  * Displays:
  * - Current wager at table
- * - Deal button to start a hand
+ * - Deal button to start a hand (only when phase allows)
  * - Bet amount control with increment/decrement
  */
 
@@ -21,6 +22,8 @@ export default function PlayBetControls() {
   const [isLoading, setIsLoading] = useState(false)
 
   const {
+    phase,
+    phaseDetail,
     tokensInPlay,
     gameActive,
     handDealt,
@@ -38,6 +41,9 @@ export default function PlayBetControls() {
     setGameState,
     setTokensInPlay,
   } = useStore()
+
+  // Check if Deal button should be visible based on phase
+  const canDeal = shouldShowDealButton(phase)
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -87,6 +93,11 @@ export default function PlayBetControls() {
 
   // Deal handler
   const handleDeal = async () => {
+    if (!canDeal) {
+      toast.error('Cannot deal at this time')
+      return
+    }
+
     if (!isConnected) {
       toast.error('Please connect your wallet first')
       return
@@ -112,17 +123,13 @@ export default function PlayBetControls() {
     setIsLoading(true)
 
     try {
-      const response = await postJSON<{
-        handId?: number
-        dealerHand?: string[]
-        playerHand?: string[]
-        message?: string
-      }>('/api/engine/bet', {
+      const response = await placeBet({
         amount: wager,
         token: selectedToken,
       })
 
       if (response.handId) {
+        // Update store with dealt cards
         setGameState(
           response.dealerHand || [],
           response.playerHand || [],
@@ -255,22 +262,37 @@ export default function PlayBetControls() {
         </div>
       </div>
 
-      {/* Deal Button */}
-      <button
-        type="button"
-        disabled={
-          !isConnected ||
-          wager <= 0 ||
-          wager < bettingLimits.min ||
-          wager > bettingLimits.max ||
-          isLoading ||
-          handDealt
-        }
-        onClick={handleDeal}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white px-6 py-4 rounded-lg font-bold text-lg transition"
-      >
-        {isLoading ? '⏳ Dealing…' : '🃏 Deal'}
-      </button>
+      {/* Phase Status */}
+      {phaseDetail && (
+        <div className="p-3 bg-neutral-800 border border-neutral-600 rounded-lg text-sm text-neutral-300 text-center">
+          {phaseDetail}
+        </div>
+      )}
+
+      {/* Deal Button - Only show when phase allows */}
+      {canDeal && (
+        <button
+          type="button"
+          disabled={
+            !isConnected ||
+            wager <= 0 ||
+            wager < bettingLimits.min ||
+            wager > bettingLimits.max ||
+            isLoading
+          }
+          onClick={handleDeal}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white px-6 py-4 rounded-lg font-bold text-lg transition"
+        >
+          {isLoading ? '⏳ Dealing…' : '🃏 Deal'}
+        </button>
+      )}
+
+      {/* Game In Progress Message */}
+      {!canDeal && (
+        <div className="p-4 bg-green-900/30 border border-green-600 rounded-lg text-sm text-green-100 text-center">
+          Hand in progress - use action buttons below to play
+        </div>
+      )}
     </div>
   )
 }

@@ -84,17 +84,65 @@ func dealInitialHands() ([]string, []string) {
 }
 
 func GetEngineState(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[GetEngineState] Incoming request from %s", r.RemoteAddr)
+
+	// Get the global engine instance (always returns valid state)
+	engine := game.GetEngine()
+	state := engine.GetState()
+
+	log.Printf("[GetEngineState] Current phase: %s, detail: %s", state.Phase, state.PhaseDetail)
+	log.Printf("[GetEngineState] HandID: %d, DeckInitialized: %v, CardsDealt: %d/%d",
+		state.HandID, state.DeckInitialized, state.CardsDealt, state.TotalCards)
+
+	// Build response with full state
 	resp := map[string]any{
-		"trueCount": 1.4, "shoePct": 62,
-		"anchor": 100.0, "spreadNum": 4.0, "lastBet": 120.0,
-		"growthCapBps": 3300, "tableMin": 5.0, "tableMax": 5000.0,
+		// Phase information
+		"phase":          state.Phase,
+		"phaseDetail":    state.PhaseDetail,
+
+		// Game state
+		"handId":         state.HandID,
+		"deckInitialized": state.DeckInitialized,
+		"cardsDealt":     state.CardsDealt,
+		"totalCards":     state.TotalCards,
+
+		// Hands (only if cards exist)
+		"dealerHand":     state.DealerHand,
+		"playerHand":     state.PlayerHand,
+
+		// Outcome (only if complete)
+		"outcome":        state.Outcome,
+		"payout":         state.Payout,
+
+		// Counting metrics
+		"trueCount":      state.TrueCount,
+		"shoePct":        state.ShoePct,
+		"runningCount":   state.RunningCount,
+
+		// Table parameters
+		"anchor":         state.Anchor,
+		"spreadNum":      state.SpreadNum,
+		"lastBet":        state.LastBet,
+		"growthCapBps":   state.GrowthCapBps,
+		"tableMin":       state.TableMin,
+		"tableMax":       state.TableMax,
+
+		// Metadata
+		"lastUpdated":    state.LastUpdated.Unix(),
 	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[GetEngineState] Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[GetEngineState] Response sent successfully")
 }
 
 func PostBet(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	log.Printf("[PostBet] Incoming bet request from %s", r.RemoteAddr)
 
 	var req struct {
 		Amount  float64 `json:"amount"`
@@ -104,16 +152,18 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("[PostBet] Error decoding request: %v", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("[PostBet] Bet amount: %.2f, token: %s", req.Amount, req.Token)
+
 	// Get player address from request (in production, authenticate/authorize)
-	// For now, use a placeholder - in production get from auth token
 	playerAddr := r.Header.Get("X-Player-Address")
 	if playerAddr == "" {
-		http.Error(w, "Player address required", http.StatusBadRequest)
-		return
+		playerAddr = "0x0000000000000000000000000000000000000000" // Demo fallback
+		log.Printf("[PostBet] No player address provided, using demo address")
 	}
 
 	// Convert amount to big.Int (assuming 18 decimals for most tokens)
@@ -122,56 +172,60 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 	amountFloat.Mul(amountFloat, big.NewFloat(1e18))
 	amountWei, _ = amountFloat.Int(nil)
 
-	_ = common.HexToAddress(req.Token) // tokenAddr - stored for future contract calls
-
-	// Get table address from Foundry broadcast or env
-	tableAddr := contracts.GetTableAddress()
-	if tableAddr == "" {
-		// Fallback: return pending state without calling contract
-		handID := time.Now().Unix()
-
-		resp := map[string]interface{}{
-			"handId":  handID,
-			"status":  "pending",
-			"message": "Bet placed, awaiting contract confirmation",
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-		return
+	tokenAddr := req.Token
+	if tokenAddr == "" {
+		tokenAddr = "0x0000000000000000000000000000000000000000" // Demo fallback
 	}
 
-	// Create table contract wrapper
-	tableContract, err := contracts.NewTableContract(tableAddr)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to connect to contract: %v", err), http.StatusInternalServerError)
-		return
-	}
-	defer tableContract.Close()
-
-	// Prepare parameters
-	var usdcRef *big.Int
-	if req.USDCRef != nil {
-		usdcRef = new(big.Int)
-		usdcRef.SetString(*req.USDCRef, 10)
-	}
-
-	var quoteId [32]byte
-	if req.QuoteID != nil {
-		quoteBytes, _ := hex.DecodeString(*req.QuoteID)
-		copy(quoteId[:], quoteBytes)
-	}
-
-	// Call placeBet on contract
-	// Note: This requires ABI bindings - for now return pending state
+	// Generate hand ID
 	handID := time.Now().Unix()
 
-	resp := map[string]interface{}{
-		"handId":  handID,
-		"status":  "pending",
-		"message": "Bet placed, awaiting VRF randomness",
+	// Get engine and start hand
+	engine := game.GetEngine()
+	if err := engine.StartHand(handID, playerAddr, tokenAddr, amountWei.String(), req.Amount); err != nil {
+		log.Printf("[PostBet] Error starting hand: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to start hand: %v", err), http.StatusInternalServerError)
+		return
 	}
+
+	log.Printf("[PostBet] Hand started: handID=%d, phase=SHUFFLING", handID)
+
+	// Generate random seed for shuffle (in production, this would come from VRF)
+	seed := make([]byte, 32)
+	rand.Read(seed)
+
+	// Shuffle and deal
+	if err := engine.ShuffleAndDeal(seed); err != nil {
+		log.Printf("[PostBet] Error shuffling and dealing: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to shuffle and deal: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Get current state
+	state := engine.GetState()
+
+	log.Printf("[PostBet] Cards dealt: phase=%s, dealer=%v, player=%v",
+		state.Phase, state.DealerHand, state.PlayerHand)
+
+	// Return state with dealt cards
+	resp := map[string]interface{}{
+		"handId":      handID,
+		"status":      "dealt",
+		"phase":       state.Phase,
+		"phaseDetail": state.PhaseDetail,
+		"dealerHand":  state.DealerHand,
+		"playerHand":  state.PlayerHand,
+		"message":     "Cards dealt - player's turn",
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[PostBet] Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[PostBet] Response sent successfully")
 }
 
 // PostResolve resolves a hand using stored VRF seed
@@ -217,22 +271,48 @@ func PostResolve(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostHit(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[PostHit] Incoming hit request")
+
 	var req ActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("[PostHit] Error decoding request: %v", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	// Deal a new card to player
-	newCard := dealCard()
-	cardPath := cardToImagePath(newCard.Value, newCard.Suit)
+	log.Printf("[PostHit] HandID: %d", req.HandID)
 
-	// In a real implementation, you'd fetch the current hand from storage
-	// For now, return updated state
-	resp := GameState{
-		HandID:     req.HandID,
-		PlayerHand: []string{cardPath}, // Simplified - should append to existing hand
-		Message:    "Card dealt",
+	// Get engine and execute hit
+	engine := game.GetEngine()
+	if err := engine.PlayerHit(); err != nil {
+		log.Printf("[PostHit] Error executing hit: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to hit: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Get current state
+	state := engine.GetState()
+
+	log.Printf("[PostHit] Card dealt: phase=%s, playerHand=%v", state.Phase, state.PlayerHand)
+
+	// Check if player busted
+	if state.Phase == game.PhaseResolution {
+		// Auto-resolve
+		if err := engine.ResolveHand(); err != nil {
+			log.Printf("[PostHit] Error resolving hand: %v", err)
+		}
+		state = engine.GetState()
+	}
+
+	resp := map[string]interface{}{
+		"handId":      req.HandID,
+		"phase":       state.Phase,
+		"phaseDetail": state.PhaseDetail,
+		"playerHand":  state.PlayerHand,
+		"dealerHand":  state.DealerHand,
+		"outcome":     state.Outcome,
+		"payout":      state.Payout,
+		"message":     "Card dealt",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -240,17 +320,54 @@ func PostHit(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostStand(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[PostStand] Incoming stand request")
+
 	var req ActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("[PostStand] Error decoding request: %v", err)
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	// Dealer plays according to rules (hit on 16, stand on 17)
-	// Simplified implementation
-	resp := GameState{
-		HandID:  req.HandID,
-		Message: "Player stands. Dealer plays.",
+	log.Printf("[PostStand] HandID: %d", req.HandID)
+
+	// Get engine and execute stand
+	engine := game.GetEngine()
+	if err := engine.PlayerStand(); err != nil {
+		log.Printf("[PostStand] Error executing stand: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to stand: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Execute dealer play
+	if err := engine.DealerPlay(); err != nil {
+		log.Printf("[PostStand] Error executing dealer play: %v", err)
+		http.Error(w, fmt.Sprintf("Failed dealer play: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Resolve hand
+	if err := engine.ResolveHand(); err != nil {
+		log.Printf("[PostStand] Error resolving hand: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to resolve: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Get final state
+	state := engine.GetState()
+
+	log.Printf("[PostStand] Hand complete: phase=%s, outcome=%s, payout=%s",
+		state.Phase, state.Outcome, state.Payout)
+
+	resp := map[string]interface{}{
+		"handId":      req.HandID,
+		"phase":       state.Phase,
+		"phaseDetail": state.PhaseDetail,
+		"dealerHand":  state.DealerHand,
+		"playerHand":  state.PlayerHand,
+		"outcome":     state.Outcome,
+		"payout":      state.Payout,
+		"message":     fmt.Sprintf("Hand complete - %s", state.Outcome),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

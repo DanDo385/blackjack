@@ -7,22 +7,39 @@ import { useStore } from '@/lib/store'
 import { useEffect, useState } from 'react'
 import { useGameOutcomes, useShuffleAlerts } from '@/lib/gameOutcomes'
 import { BetAgainHandler } from './BetAgainHandler'
+import { shouldShowCards } from '@/lib/types'
 
 /**
  * TableCanvas - Main game table display
  *
  * Renders:
- * - Dealer/player cards overlaid absolutely on felt image
+ * - Dealer/player cards overlaid absolutely on felt image (only when phase allows)
  * - Game metrics (True Count, Shoe %)
  * - Betting controls
  */
 export default function TableCanvas() {
-  const { trueCount, shoePct, anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax } = useStore()
+  const {
+    phase,
+    trueCount,
+    shoePct,
+    anchor,
+    spreadNum,
+    lastBet,
+    growthCapBps,
+    tableMin,
+    tableMax,
+    dealerHand,
+    playerHand,
+  } = useStore()
+
   const [nextIdx, setNextIdx] = useState(0) // 0..3 for 4 card slots
 
   // Track game outcomes for win/loss alerts
   useGameOutcomes()
   useShuffleAlerts()
+
+  // Check if cards should be visible based on phase
+  const showCards = shouldShowCards(phase)
 
   useEffect(() => {
     const id = setInterval(() => setNextIdx((n) => (n + 1) % 4), 2.5)
@@ -34,11 +51,6 @@ export default function TableCanvas() {
     // In real implementation, this would call the backend to start a new hand
     console.log('Deal button triggered')
   }
-
-  const dealer = ['/cards/10-H.png', '/cards/back.png']
-  const player = ['/cards/9-C.png']
-
-  const { dealerHand, playerHand } = useStore()
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -58,45 +70,57 @@ export default function TableCanvas() {
         />
 
         {/* Cards overlay - positioned absolutely on felt */}
-        <div className="pointer-events-none absolute inset-0">
-          {/* Dealer cards - dynamically render from store */}
-          {dealerHand.length > 0 && (
-            <div className="absolute flex gap-4" style={{ left: '50%', top: '20%', transform: 'translateX(-50%)' }}>
-              {dealerHand.map((card, idx) => (
-                <div key={idx}>
-                  <Image
-                    alt={`dealer card ${idx + 1}`}
-                    src={card.startsWith('/cards/') ? card : `/cards/${card}`}
-                    width={30}
-                    height={42}
-                    className="card-small"
-                    draggable={false}
-                    tabIndex={-1}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Only show cards when phase allows (after DEALING phase) */}
+        {showCards && (
+          <div className="pointer-events-none absolute inset-0">
+            {/* Dealer cards - dynamically render from store */}
+            {dealerHand.length > 0 && (
+              <div className="absolute flex gap-4" style={{ left: '50%', top: '20%', transform: 'translateX(-50%)' }}>
+                {dealerHand.map((card, idx) => (
+                  <div key={idx}>
+                    <Image
+                      alt={`dealer card ${idx + 1}`}
+                      src={card.startsWith('/cards/') ? card : `/cards/${card}`}
+                      width={30}
+                      height={42}
+                      className="card-small"
+                      draggable={false}
+                      tabIndex={-1}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* Player cards - dynamically render from store */}
-          {playerHand.length > 0 && (
-            <div className="absolute flex gap-4" style={{ left: '50%', bottom: '25%', transform: 'translateX(-50%)' }}>
-              {playerHand.map((card, idx) => (
-                <div key={idx}>
-                  <Image
-                    alt={`player card ${idx + 1}`}
-                    src={card.startsWith('/cards/') ? card : `/cards/${card}`}
-                    width={30}
-                    height={42}
-                    className="card-small"
-                    draggable={false}
-                    tabIndex={-1}
-                  />
-                </div>
-              ))}
+            {/* Player cards - dynamically render from store */}
+            {playerHand.length > 0 && (
+              <div className="absolute flex gap-4" style={{ left: '50%', bottom: '25%', transform: 'translateX(-50%)' }}>
+                {playerHand.map((card, idx) => (
+                  <div key={idx}>
+                    <Image
+                      alt={`player card ${idx + 1}`}
+                      src={card.startsWith('/cards/') ? card : `/cards/${card}`}
+                      width={30}
+                      height={42}
+                      className="card-small"
+                      draggable={false}
+                      tabIndex={-1}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Placeholder message when no cards */}
+        {!showCards && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-white/40 text-lg font-mono">
+              Waiting for deal...
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-5">
