@@ -2,15 +2,12 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-COMPOSE_FILE="$ROOT_DIR/docker-compose.dev.yml"
 PRIVATE_KEY_DEFAULT="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 TREASURY_ADDR_DEFAULT="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 RPC_URL="http://127.0.0.1:8545"
 
 FRONTEND_PID=""
-BACKEND_PID=""
 ANVIL_PID=""
-COMPOSE_CMD=""
 
 cleanup() {
   local exit_code=$?
@@ -20,127 +17,20 @@ cleanup() {
   fi
   # Kill any process using port 3000 (Next.js)
   lsof -ti:3000 | xargs kill -9 >/dev/null 2>&1 || true
-  if [[ -n "$BACKEND_PID" ]] && ps -p "$BACKEND_PID" >/dev/null 2>&1; then
-    kill "$BACKEND_PID" >/dev/null 2>&1 || true
-  fi
   if [[ -n "$ANVIL_PID" ]] && ps -p "$ANVIL_PID" >/dev/null 2>&1; then
     kill "$ANVIL_PID" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "$COMPOSE_CMD" ]]; then
-    $COMPOSE_CMD -f "$COMPOSE_FILE" down >/dev/null 2>&1 || true
   fi
   exit "$exit_code"
 }
 trap cleanup EXIT INT TERM
 
-# Docker setup
-if command -v docker >/dev/null 2>&1; then
-  if docker compose version >/dev/null 2>&1; then
-    COMPOSE_CMD="docker compose"
-  elif command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_CMD="docker-compose"
-  else
-    echo "docker compose is required. Install Docker Desktop or docker-compose." >&2
-    exit 1
-  fi
-else
-  echo "docker is required to run the local databases." >&2
-  exit 1
-fi
-
-ensure_docker_daemon() {
-  if docker info >/dev/null 2>&1; then
-    return
-  fi
-
-  echo "Docker daemon is not running." >&2
-
-  if command -v colima >/dev/null 2>&1; then
-    echo "Attempting to start Colima to satisfy Docker dependencies..." >&2
-    if ! colima start; then
-      echo "Failed to start Colima automatically. Please run 'colima start' manually and rerun this command." >&2
-      exit 1
-    fi
-
-    echo "Waiting for Docker socket after starting Colima..." >&2
-    for _ in $(seq 1 15); do
-      if docker info >/dev/null 2>&1; then
-        return
-      fi
-      sleep 1
-    done
-
-    echo "Docker socket not available after starting Colima. Verify Colima is running and rerun." >&2
-    # Fall through to try Docker Desktop as a fallback
-  fi
-
-  # Try to start Docker Desktop automatically on macOS if available
-  if command -v open >/dev/null 2>&1 && { [ -d "/Applications/Docker.app" ] || [ -d "$HOME/Applications/Docker.app" ]; }; then
-    echo "Attempting to start Docker Desktop..." >&2
-    open -a Docker || true
-    echo "Waiting for Docker Desktop to start..." >&2
-    for _ in $(seq 1 60); do
-      if docker info >/dev/null 2>&1; then
-        return
-      fi
-      sleep 2
-    done
-  fi
-
-  echo "Please start Docker Desktop (or run 'colima start') and rerun this command." >&2
-  exit 1
-}
-
-ensure_docker_daemon
-
-if ! command -v npm >/dev/null 2>&1; then
-  echo "npm is required to run the frontend." >&2
-  exit 1
-fi
-
-for cmd in go anvil forge curl; do
+# Check required commands
+for cmd in anvil forge curl npm; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "Required command '$cmd' is not available in PATH." >&2
     exit 1
   fi
 done
-
-echo "Starting local databases with Docker..."
-$COMPOSE_CMD -f "$COMPOSE_FILE" up -d
-
-wait_for_container() {
-  local name="$1"
-  local status=""
-  until [[ "$status" == "healthy" ]]; do
-    status=$(docker inspect -f '{{ .State.Health.Status }}' "$name" 2>/dev/null || echo "starting")
-    echo "Waiting for $name (status: $status)..."
-    sleep 2
-  done
-}
-
-wait_for_container "blackjack-postgres"
-wait_for_container "blackjack-redis"
-
-echo "Datastores are ready. Applying database schema..."
-if ! docker exec blackjack-postgres psql -U postgres -d yolo -Atqc "SELECT to_regclass('public.hands')" | grep -q "hands"; then
-  docker exec -i blackjack-postgres psql -U postgres -d yolo < "$ROOT_DIR/backend/schema.sql"
-  echo "Database schema applied."
-else
-  echo "Database schema already present, skipping."
-fi
-
-echo "Ensuring frontend dependencies are installed..."
-if [[ ! -d "$ROOT_DIR/frontend/node_modules" ]]; then
-  (cd "$ROOT_DIR/frontend" && npm install)
-fi
-
-echo "Starting Go API server..."
-export POSTGRES_DSN="postgresql://postgres:postgres@localhost:5432/yolo?sslmode=disable"
-export REDIS_ADDR="localhost:6379"
-(cd "$ROOT_DIR/backend" && go run ./cmd/api > /tmp/blackjack-api.log 2>&1) &
-BACKEND_PID=$!
-echo "Go API logs: tail -f /tmp/blackjack-api.log"
-sleep 2
 
 start_anvil() {
   echo "Starting Anvil local chain..."
@@ -166,16 +56,13 @@ export PRIVATE_KEY
 echo "Compiling and deploying contracts to local Anvil..."
 echo "Running: forge script script/DeployFactory.s.sol..."
 
-# Run with timeout (30 seconds should be plenty for local Anvil)
+# Deploy Factory contract
 set +e
-FACTORY_OUTPUT=$(timeout 30s bash -c "cd '$ROOT_DIR/contracts' && forge script script/DeployFactory.s.sol --rpc-url '$RPC_URL' --broadcast --private-key '$PRIVATE_KEY' --skip-simulation 2>&1" | sanitize_output)
+FACTORY_OUTPUT=$(cd "$ROOT_DIR/contracts" && forge script script/DeployFactory.s.sol --rpc-url "$RPC_URL" --broadcast --private-key "$PRIVATE_KEY" --skip-simulation 2>&1 | sanitize_output)
 FACTORY_DEPLOY_STATUS=$?
 set -e
 
-if [ $FACTORY_DEPLOY_STATUS -eq 124 ]; then
-  echo "Factory deployment timed out after 30 seconds" >&2
-  exit 1
-elif [ $FACTORY_DEPLOY_STATUS -ne 0 ]; then
+if [ $FACTORY_DEPLOY_STATUS -ne 0 ]; then
   echo "Factory deployment failed with exit code: $FACTORY_DEPLOY_STATUS"
   echo "Output:"
   echo "$FACTORY_OUTPUT"
@@ -199,14 +86,11 @@ sleep 2
 
 echo "Deploying tables..."
 set +e
-TABLE_OUTPUT=$(timeout 30s bash -c "cd '$ROOT_DIR/contracts' && FACTORY_ADDR='$FACTORY_ADDR' TREASURY_ADDR='$TREASURY_ADDR' forge script script/DeployTables.s.sol --rpc-url '$RPC_URL' --broadcast --private-key '$PRIVATE_KEY' --skip-simulation 2>&1" | sanitize_output)
+TABLE_OUTPUT=$(cd "$ROOT_DIR/contracts" && FACTORY_ADDR="$FACTORY_ADDR" TREASURY_ADDR="$TREASURY_ADDR" forge script script/DeployTables.s.sol --rpc-url "$RPC_URL" --broadcast --private-key "$PRIVATE_KEY" --skip-simulation 2>&1 | sanitize_output)
 TABLE_EXIT_CODE=$?
 set -e
 
-if [ $TABLE_EXIT_CODE -eq 124 ]; then
-  echo "Table deployment timed out after 30 seconds" >&2
-  exit 1
-elif [ $TABLE_EXIT_CODE -ne 0 ]; then
+if [ $TABLE_EXIT_CODE -ne 0 ]; then
   echo "Table deployment failed with exit code: $TABLE_EXIT_CODE"
   echo "Full output:"
   echo "$TABLE_OUTPUT"
@@ -254,23 +138,22 @@ export const abis = {
 }
 CONTRACTS_EOF
 
+echo "Ensuring frontend dependencies are installed..."
+if [[ ! -d "$ROOT_DIR/frontend/node_modules" ]]; then
+  (cd "$ROOT_DIR/frontend" && npm install)
+fi
+
 ENV_FILE="$ROOT_DIR/frontend/.env.local"
 if [[ ! -f "$ENV_FILE" ]]; then
   cat > "$ENV_FILE" <<EOF_ENV
-NEXT_PUBLIC_API_BASE=http://localhost:8080
 NEXT_PUBLIC_CHAIN_ID=31337
 EOF_ENV
   echo "Created frontend/.env.local"
 else
-  if ! grep -q '^NEXT_PUBLIC_API_BASE=' "$ENV_FILE"; then
-    echo 'NEXT_PUBLIC_API_BASE=http://localhost:8080' >> "$ENV_FILE"
-  fi
   if ! grep -q '^NEXT_PUBLIC_CHAIN_ID=' "$ENV_FILE"; then
     echo 'NEXT_PUBLIC_CHAIN_ID=31337' >> "$ENV_FILE"
   fi
 fi
-
-export NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE:-http://localhost:8080}
 
 echo "Starting Next.js frontend..."
 # Kill any existing process on port 3000
@@ -282,9 +165,6 @@ echo "Frontend logs: tail -f /tmp/blackjack-frontend.log"
 sleep 3
 
 echo "\nAll services are running:"
-printf '  %-25s %s\n' "PostgreSQL" "localhost:5432"
-printf '  %-25s %s\n' "Redis" "localhost:6379"
-printf '  %-25s %s\n' "Go API" "http://localhost:8080"
 printf '  %-25s %s\n' "Anvil" "$RPC_URL"
 printf '  %-25s %s\n' "Next.js" "http://localhost:3000"
 echo
