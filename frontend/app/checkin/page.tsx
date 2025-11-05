@@ -43,7 +43,7 @@ export default function CheckIn() {
   const [wagerStep, setWagerStep] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
 
-  const { setChipsAtTable, setLastWager, setGameState } = useStore()
+  const { setChipsAtTable, setLastWager, setTokensInPlay } = useStore()
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -114,9 +114,10 @@ export default function CheckIn() {
     setIsLoading(true)
 
     try {
-      // Update store with chips at table
+      // Update store with chips at table and selected token
+      // Note: Do NOT set wager here - wager is set on /play page
       setChipsAtTable(wager)
-      setLastWager(wager)
+      setTokensInPlay(wager, selectedToken)
 
       // Show success alert
       showTokensBroughtToTableAlert({

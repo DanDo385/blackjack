@@ -4,8 +4,10 @@ import TableCanvas from '@/components/TableCanvas'
 import { AlertBus } from '@/components/AlertBus'
 import BetControls from '@/components/BetControls'
 import { useStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
 
 export default function Play(){
+  const router = useRouter()
   const { chipsAtTable, selectedToken } = useStore()
 
   return (
@@ -27,6 +29,23 @@ export default function Play(){
                   {chipsAtTable.toFixed(6)} {selectedToken}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Check In button when no chips at table */}
+        {(!chipsAtTable || chipsAtTable <= 0) && (
+          <div className="max-w-2xl mx-auto mt-6">
+            <div className="p-4 bg-amber-900/30 border border-amber-600 rounded-lg text-center space-y-4">
+              <div className="text-amber-100 text-sm">
+                No chips at table. Check in to bring chips to the table.
+              </div>
+              <button
+                onClick={() => router.push('/checkin')}
+                className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+              >
+                Check In
+              </button>
             </div>
           </div>
         )}

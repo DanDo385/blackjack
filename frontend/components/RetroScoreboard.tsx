@@ -16,7 +16,7 @@ interface RetroScoreboardProps {
  * Features:
  * - Real-time card counting metrics (true count, shoe percentage)
  * - Player winnings and dealer wins tracking
- * - Color-coded stats (green for player winning, red for losing)
+ * - Color-coded stats (player wins: green, dealer wins: red, profit/loss: conditional)
  * - Futuristic neon glow effects
  * - Responsive grid layout
  *
@@ -35,10 +35,7 @@ export default function RetroScoreboard({
 }: RetroScoreboardProps) {
   const netProfitLoss = playerWinnings - playerLosings
 
-  // Determine colors based on who is "winning"
-  const isPlayerWinning = netProfitLoss > dealerWinnings
-  const playerStatColor = isPlayerWinning ? 'var(--neon-green)' : 'var(--neon-magenta)'
-  const dealerStatColor = isPlayerWinning ? 'var(--neon-magenta)' : 'var(--neon-green)'
+  // Color scheme: Player Winnings (green), Dealer Wins (red), Profit/Loss (conditional)
   const profitColor = netProfitLoss >= 0 ? 'var(--neon-green)' : 'var(--neon-magenta)'
 
   return (
@@ -48,8 +45,8 @@ export default function RetroScoreboard({
         <div
           className="stat-value"
           style={{
-            color: playerStatColor,
-            textShadow: `0 0 10px ${playerStatColor}`,
+            color: 'var(--neon-green)',
+            textShadow: '0 0 10px var(--neon-green)',
           }}
         >
           ${playerWinnings.toFixed(2)}
@@ -67,9 +64,6 @@ export default function RetroScoreboard({
         >
           {netProfitLoss >= 0 ? '+' : ''}${netProfitLoss.toFixed(2)}
         </div>
-        <div className="stat-label" style={{ marginTop: '8px', fontSize: '11px' }}>
-          True Count: {trueCount >= 0 ? '+' : ''}{trueCount.toFixed(1)}
-        </div>
       </div>
 
       <div className="stat-box">
@@ -77,11 +71,24 @@ export default function RetroScoreboard({
         <div
           className="stat-value"
           style={{
-            color: dealerStatColor,
-            textShadow: `0 0 10px ${dealerStatColor}`,
+            color: 'var(--neon-magenta)',
+            textShadow: '0 0 10px var(--neon-magenta)',
           }}
         >
-          {dealerWinnings}
+          ${dealerWinnings.toFixed(2)}
+        </div>
+      </div>
+
+      <div className="stat-box">
+        <div className="stat-label">True Count</div>
+        <div
+          className="stat-value"
+          style={{
+            color: 'var(--neon-yellow)',
+            textShadow: '0 0 10px var(--neon-yellow)',
+          }}
+        >
+          {trueCount >= 0 ? '+' : ''}{trueCount.toFixed(1)}
         </div>
       </div>
 
