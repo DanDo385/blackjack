@@ -27,9 +27,23 @@ const getBaseUrl = () => {
 /**
  * Helper to check if response is ok, throw otherwise
  */
-function throwIfNotOk(res: Response) {
+async function throwIfNotOk(res: Response) {
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`)
+    // Try to get detailed error from response body
+    let errorDetail = ''
+    try {
+      const errorBody = await res.text()
+      errorDetail = errorBody ? ` - ${errorBody}` : ''
+      console.error('API Error Details:', {
+        status: res.status,
+        statusText: res.statusText,
+        url: res.url,
+        body: errorBody,
+      })
+    } catch (e) {
+      console.error('Failed to read error response body:', e)
+    }
+    throw new Error(`API error: ${res.status} ${res.statusText}${errorDetail}`)
   }
 }
 
@@ -42,16 +56,19 @@ export async function getJSON<T>(path: string): Promise<T> {
   if (typeof window === 'undefined') {
     throw new Error('getJSON can only be called from client-side code')
   }
-  
+
   try {
     const url = getBaseUrl() + path
+    console.log(`GET ${path} - requesting...`)
     const res = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
     })
-    throwIfNotOk(res)
-    return await res.json()
+    await throwIfNotOk(res)
+    const data = await res.json()
+    console.log(`GET ${path} - success:`, data)
+    return data
   } catch (error) {
     console.error(`GET ${path} failed:`, error)
     throw error
@@ -67,16 +84,19 @@ export async function postJSON<T>(path: string, body: any): Promise<T> {
   if (typeof window === 'undefined') {
     throw new Error('postJSON can only be called from client-side code')
   }
-  
+
   try {
     const url = getBaseUrl() + path
+    console.log(`POST ${path} - requesting with body:`, body)
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    throwIfNotOk(res)
-    return await res.json()
+    await throwIfNotOk(res)
+    const data = await res.json()
+    console.log(`POST ${path} - success:`, data)
+    return data
   } catch (error) {
     console.error(`POST ${path} failed:`, error)
     throw error
@@ -114,8 +134,12 @@ export async function putJSON<T>(path: string, body: any): Promise<T> {
  */
 export async function getEngineState(): Promise<Partial<EngineState>> {
   try {
-    return await getJSON<EngineState>('/api/engine/state')
+    console.log('getEngineState - fetching engine state...')
+    const state = await getJSON<EngineState>('/api/engine/state')
+    console.log('getEngineState - received state:', state)
+    return state
   } catch (error) {
+    console.error('getEngineState - failed to fetch engine state:', error)
     console.warn('Engine state unavailable, using defaults:', error)
     // Return sensible defaults when backend is down
     return {
@@ -147,7 +171,15 @@ export async function getEngineState(): Promise<Partial<EngineState>> {
  * Place a bet and deal cards
  */
 export async function placeBet(request: BetRequest): Promise<BetResponse> {
-  return postJSON<BetResponse>('/api/engine/bet', request)
+  console.log('placeBet - placing bet with request:', request)
+  try {
+    const response = await postJSON<BetResponse>('/api/engine/bet', request)
+    console.log('placeBet - bet placed successfully:', response)
+    return response
+  } catch (error) {
+    console.error('placeBet - failed to place bet:', error)
+    throw error
+  }
 }
 
 /**

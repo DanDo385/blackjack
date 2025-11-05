@@ -64,7 +64,7 @@ export default function BetControls({
   const [isLoading, setIsLoading] = useState(false)
   
   const {
-    tokensInPlay,
+    chipsAtTable,
     tokenInPlay,
     gameActive,
     wager,
@@ -75,7 +75,7 @@ export default function BetControls({
     setWager,
     setWagerStep,
     setLastWager,
-    setTokensInPlay,
+    setChipsAtTable,
     setGameState,
     closeReDealPrompt,
     resetHand
@@ -161,8 +161,8 @@ export default function BetControls({
     setIsLoading(true)
 
     try {
-      // Update store with tokens in play
-      setTokensInPlay(wager, selectedToken)
+      // Update store with chips at table
+      setChipsAtTable(wager, selectedToken)
 
       // Persist lastWager for next deal
       setLastWager(wager)
@@ -173,9 +173,9 @@ export default function BetControls({
         token: selectedToken,
       })
 
-      toast.success('Tokens brought to table ✅')
+      toast.success('Chips brought to table ✅')
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to bring tokens'
+      const message = error instanceof Error ? error.message : 'Failed to bring chips'
       toast.error(`Failed: ${message}`)
     } finally {
       setIsLoading(false)
@@ -189,8 +189,8 @@ export default function BetControls({
       return
     }
 
-    if (tokensInPlay <= 0) {
-      toast.error('No tokens at table')
+    if (chipsAtTable <= 0) {
+      toast.error('No chips at table')
       return
     }
 
@@ -204,7 +204,7 @@ export default function BetControls({
         playerHand?: string[]
         message?: string
       }>('/api/engine/bet', {
-        amount: tokensInPlay,
+        amount: chipsAtTable,
         token: tokenInPlay,
       })
 
@@ -254,8 +254,8 @@ export default function BetControls({
     // lastWager is already persisted, do nothing
   }
 
-  // Phase 2: Show game actions if tokens are in play
-  if (gameActive && tokensInPlay > 0) {
+  // Phase 2: Show game actions if chips are at table
+  if (gameActive && chipsAtTable > 0) {
     return (
       <>
         <ReDealPrompt

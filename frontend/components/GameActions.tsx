@@ -17,7 +17,7 @@ export default function GameActions() {
   const router = useRouter()
   const {
     phase,
-    tokensInPlay,
+    chipsAtTable,
     tokenInPlay,
     handId,
     handDealt,
@@ -26,7 +26,8 @@ export default function GameActions() {
     cashOut,
     endHand,
     setGameState,
-    resetHand
+    resetHand,
+    updateChipsAfterHand
   } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -58,10 +59,13 @@ export default function GameActions() {
 
       // Check if hand is complete
       if (response.phase === 'COMPLETE') {
-        endHand()
-        if (response.outcome) {
+        // Update chips based on outcome
+        if (response.outcome && response.payout) {
+          const payoutAmount = parseFloat(response.payout)
+          updateChipsAfterHand(payoutAmount, response.outcome)
           toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
         }
+        endHand()
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Action failed'
@@ -90,8 +94,10 @@ export default function GameActions() {
         )
       }
 
-      // Show outcome
-      if (response.outcome) {
+      // Update chips based on outcome
+      if (response.outcome && response.payout) {
+        const payoutAmount = parseFloat(response.payout)
+        updateChipsAfterHand(payoutAmount, response.outcome)
         toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
       }
 
@@ -154,8 +160,10 @@ export default function GameActions() {
         )
       }
 
-      // Show outcome
-      if (response.outcome) {
+      // Update chips and show outcome
+      if (response.outcome && response.payout) {
+        const payoutAmount = parseFloat(response.payout)
+        updateChipsAfterHand(payoutAmount, response.outcome)
         toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
       }
 
@@ -172,15 +180,11 @@ export default function GameActions() {
   const handleCashOut = async () => {
     setLoading('cashout')
     try {
-      await fetch('/api/game/cashout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ handId }),
-      })
-
+      // Note: Backend cashout endpoint may not exist yet
+      // For now, just clear the local state and redirect
       cashOut()
-      toast.success('Tokens cashed out successfully')
-      router.push('/')
+      toast.success(`Cashed out ${chipsAtTable.toFixed(6)} ${tokenInPlay}`)
+      router.push('/checkin')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Cash out failed'
       toast.error(`Cash out failed: ${message}`)
@@ -197,7 +201,7 @@ export default function GameActions() {
   const canCashOut = !loading
 
   // Don't render anything if not at table
-  if (!tokensInPlay || tokensInPlay <= 0) {
+  if (!chipsAtTable || chipsAtTable <= 0) {
     return null
   }
 

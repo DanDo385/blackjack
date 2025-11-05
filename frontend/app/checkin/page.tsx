@@ -44,7 +44,7 @@ export default function CheckIn() {
   const [wagerStep, setWagerStep] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
 
-  const { setTokensInPlay, setLastWager, setGameState } = useStore()
+  const { setChipsAtTable, setLastWager, setGameState } = useStore()
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -116,8 +116,8 @@ export default function CheckIn() {
     setIsLoading(true)
 
     try {
-      // Update store with tokens in play
-      setTokensInPlay(wager, selectedToken)
+      // Update store with chips at table
+      setChipsAtTable(wager, selectedToken)
       setLastWager(wager)
 
       // Show success alert
@@ -178,41 +178,60 @@ export default function CheckIn() {
             )}
           </div>
 
-          {/* Token Balances */}
+          {/* Token Balances - Only show non-zero balances */}
           {isConnected && (
             <div className="p-4 rounded-xl border border-neutral-700 bg-neutral-900 space-y-3">
               <h2 className="font-semibold text-neutral-200">Your Balances</h2>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">ETH</span>
-                  <span className="font-mono text-white">
-                    {(ethBalance ? parseFloat(ethBalance.value.toString()) / Math.pow(10, ethBalance.decimals) : 0).toFixed(4)} ETH
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">wETH</span>
-                  <span className="font-mono text-white">
-                    {(wethBalance ? parseFloat(wethBalance.value.toString()) / Math.pow(10, wethBalance.decimals) : 0).toFixed(4)} wETH
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">wBTC</span>
-                  <span className="font-mono text-white">
-                    {(wbtcBalance ? parseFloat(wbtcBalance.value.toString()) / Math.pow(10, wbtcBalance.decimals) : 0).toFixed(6)} wBTC
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">USDC</span>
-                  <span className="font-mono text-white">
-                    {(usdcBalance ? parseFloat(usdcBalance.value.toString()) / Math.pow(10, usdcBalance.decimals) : 0).toFixed(2)} USDC
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">USDT</span>
-                  <span className="font-mono text-white">
-                    {(usdtBalance ? parseFloat(usdtBalance.value.toString()) / Math.pow(10, usdtBalance.decimals) : 0).toFixed(2)} USDT
-                  </span>
-                </div>
+                {(() => {
+                  const balances = [
+                    {
+                      symbol: 'ETH',
+                      balance: ethBalance ? parseFloat(ethBalance.value.toString()) / Math.pow(10, ethBalance.decimals) : 0,
+                      decimals: 4,
+                    },
+                    {
+                      symbol: 'wETH',
+                      balance: wethBalance ? parseFloat(wethBalance.value.toString()) / Math.pow(10, wethBalance.decimals) : 0,
+                      decimals: 4,
+                    },
+                    {
+                      symbol: 'wBTC',
+                      balance: wbtcBalance ? parseFloat(wbtcBalance.value.toString()) / Math.pow(10, wbtcBalance.decimals) : 0,
+                      decimals: 6,
+                    },
+                    {
+                      symbol: 'USDC',
+                      balance: usdcBalance ? parseFloat(usdcBalance.value.toString()) / Math.pow(10, usdcBalance.decimals) : 0,
+                      decimals: 2,
+                    },
+                    {
+                      symbol: 'USDT',
+                      balance: usdtBalance ? parseFloat(usdtBalance.value.toString()) / Math.pow(10, usdtBalance.decimals) : 0,
+                      decimals: 2,
+                    },
+                  ]
+
+                  // Filter to only show non-zero balances
+                  const nonZeroBalances = balances.filter(b => b.balance > 0)
+
+                  if (nonZeroBalances.length === 0) {
+                    return (
+                      <div className="text-neutral-400 text-center py-2">
+                        No tokens with balance found
+                      </div>
+                    )
+                  }
+
+                  return nonZeroBalances.map(({ symbol, balance, decimals }) => (
+                    <div key={symbol} className="flex justify-between">
+                      <span className="text-neutral-400">{symbol}</span>
+                      <span className="font-mono text-white">
+                        {balance.toFixed(decimals)} {symbol}
+                      </span>
+                    </div>
+                  ))
+                })()}
               </div>
             </div>
           )}
@@ -222,7 +241,7 @@ export default function CheckIn() {
             <div className="p-4 rounded-xl border border-neutral-700 bg-neutral-900 space-y-4">
               {/* Token Selector */}
               <div>
-                <label className="text-sm font-medium text-white block mb-2">Wager Token</label>
+                <label className="text-sm font-medium text-white block mb-2">Token</label>
                 <select
                   value={selectedToken}
                   onChange={(e) => {
@@ -242,7 +261,7 @@ export default function CheckIn() {
 
               {/* Wager Amount */}
               <div>
-                <label className="text-sm font-medium text-white block mb-2">Wager Amount</label>
+                <label className="text-sm font-medium text-white block mb-2">Amount</label>
                 <div className="flex items-center gap-2">
                   {/* Decrease button */}
                   <button
