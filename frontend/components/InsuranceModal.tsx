@@ -11,7 +11,7 @@ import { useStore } from '@/lib/store'
  * Only renders when insurance is available
  */
 export default function InsuranceModal() {
-  const { dealerHand, handId, tokensInPlay } = useStore()
+  const { dealerHand, handId, chipsAtTable } = useStore()
   const [showModal, setShowModal] = useState(false)
 
   // Check if dealer's first card is an Ace
@@ -36,7 +36,7 @@ export default function InsuranceModal() {
       await postJSON('/api/game/insurance', {
         handId,
         buyInsurance,
-        amount: buyInsurance ? tokensInPlay * 0.5 : 0, // Insurance is typically half the bet
+        amount: buyInsurance ? chipsAtTable * 0.5 : 0, // Insurance is typically half the bet
       })
 
       if (buyInsurance) {
@@ -62,7 +62,7 @@ export default function InsuranceModal() {
           The dealer is showing an Ace. Would you like to buy insurance?
           <br />
           <span className="text-sm text-gray-500">
-            Insurance costs {tokensInPlay * 0.5} {useStore.getState().tokenInPlay} and pays 2:1 if dealer has blackjack.
+            Insurance costs {chipsAtTable * 0.5} {useStore.getState().tokenInPlay} and pays 2:1 if dealer has blackjack.
           </span>
         </p>
         <div className="flex gap-4">

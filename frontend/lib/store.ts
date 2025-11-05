@@ -38,7 +38,7 @@ export type GameState = {
   wagerStep: number    // Increment step for +/- buttons
 
   // Game state
-  tokensInPlay: number
+  chipsAtTable: number // Amount of chips/tokens at table (updates based on wins/losses)
   tokenInPlay: string // Token symbol (ETH, USDC, etc.)
   selectedToken: string // Currently selected token for betting
   gameActive: boolean
@@ -55,7 +55,8 @@ export type GameState = {
   // Actions
   newShoe: () => void
   resetCounting: () => void
-  setTokensInPlay: (amount: number, token: string) => void
+  setChipsAtTable: (amount: number, token: string) => void
+  updateChipsAfterHand: (payout: number, outcome: string) => void // Update chips based on hand outcome
   cashOut: () => void
   setGameState: (dealerHand: string[], playerHand: string[], handId: number) => void
   setWager: (value: number) => void
@@ -66,7 +67,7 @@ export type GameState = {
   resetHand: () => void // Resets hand state for new deal
 }
 
-const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInPlay' | 'cashOut' | 'setGameState' | 'setWager' | 'setWagerStep' | 'setLastWager' | 'endHand' | 'closeReDealPrompt' | 'resetHand'> = {
+const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setChipsAtTable' | 'updateChipsAfterHand' | 'cashOut' | 'setGameState' | 'setWager' | 'setWagerStep' | 'setLastWager' | 'endHand' | 'closeReDealPrompt' | 'resetHand'> = {
   // Phase tracking
   phase: 'WAITING_FOR_DEAL',
   phaseDetail: 'Waiting for player to place bet and deal',
@@ -94,7 +95,7 @@ const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInP
   wagerStep: 1,
 
   // Game state
-  tokensInPlay: 0,
+  chipsAtTable: 0,
   tokenInPlay: '',
   selectedToken: 'USDC',
   gameActive: false,
@@ -153,22 +154,49 @@ export const useStore = create<GameState>((set, get) => {
     }),
 
   /**
-   * Set tokens brought to table
+   * Set chips brought to table (called from check-in)
    */
-  setTokensInPlay: (amount: number, token: string) =>
+  setChipsAtTable: (amount: number, token: string) =>
     set({
-      tokensInPlay: amount,
+      chipsAtTable: amount,
       tokenInPlay: token,
       selectedToken: token,
       gameActive: amount > 0,
     }),
 
   /**
-   * Cash out - reset tokens and return to betting phase
+   * Update chips at table after hand completes based on outcome
+   */
+  updateChipsAfterHand: (payout: number, outcome: string) =>
+    set((state) => {
+      const currentChips = state.chipsAtTable
+      const wager = state.wager
+
+      let newChips = currentChips
+
+      // Update chips based on outcome
+      if (outcome === 'win') {
+        newChips = currentChips + payout
+      } else if (outcome === 'lose') {
+        newChips = currentChips - wager
+      } else if (outcome === 'push') {
+        // No change for push
+        newChips = currentChips
+      }
+
+      return {
+        chipsAtTable: Math.max(0, newChips), // Never go negative
+        payout: String(payout),
+        outcome: outcome as GameOutcome,
+      }
+    }),
+
+  /**
+   * Cash out - reset chips and return to betting phase
    */
   cashOut: () =>
     set({
-      tokensInPlay: 0,
+      chipsAtTable: 0,
       tokenInPlay: '',
       gameActive: false,
       dealerHand: [],

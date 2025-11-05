@@ -24,7 +24,7 @@ export default function PlayBetControls() {
   const {
     phase,
     phaseDetail,
-    tokensInPlay,
+    chipsAtTable,
     gameActive,
     handDealt,
     wager,
@@ -39,7 +39,7 @@ export default function PlayBetControls() {
     setWager,
     setWagerStep,
     setGameState,
-    setTokensInPlay,
+    setChipsAtTable,
   } = useStore()
 
   // Check if Deal button should be visible based on phase
@@ -76,20 +76,11 @@ export default function PlayBetControls() {
       const capped = Math.min(positive, bettingLimits.max)
 
       setWager(capped)
-
-      if (selectedToken) {
-        setTokensInPlay(capped, selectedToken)
-      }
     },
-    [bettingLimits.max, selectedToken, setTokensInPlay, setWager]
+    [bettingLimits.max, setWager]
   )
 
-  // Keep wager aligned with tokens when external updates occur
-  useEffect(() => {
-    if (!handDealt && tokensInPlay !== wager) {
-      setWager(tokensInPlay)
-    }
-  }, [handDealt, setWager, tokensInPlay, wager])
+  // No automatic wager reset - preserve wager across hands
 
   // Deal handler
   const handleDeal = async () => {
@@ -103,13 +94,18 @@ export default function PlayBetControls() {
       return
     }
 
-    if (tokensInPlay <= 0) {
-      toast.error('No tokens at table')
+    if (chipsAtTable <= 0) {
+      toast.error('No chips at table')
       return
     }
 
     if (wager <= 0) {
       toast.error('Please set a wager')
+      return
+    }
+
+    if (wager > chipsAtTable) {
+      toast.error(`Wager exceeds chips at table (${chipsAtTable.toFixed(2)})`)
       return
     }
 
@@ -154,23 +150,23 @@ export default function PlayBetControls() {
     )
   }
 
-  if (!tokensInPlay || tokensInPlay <= 0) {
+  if (!chipsAtTable || chipsAtTable <= 0) {
     return (
       <div className="p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-sm text-amber-100 text-center">
-        ⚠️ Go to <a href="/checkin" className="underline font-semibold hover:no-underline">Check In</a> to bring tokens to table
+        ⚠️ Go to <a href="/checkin" className="underline font-semibold hover:no-underline">Check In</a> to bring chips to table
       </div>
     )
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      {/* Tokens at Table Status */}
+      {/* Chips at Table Status */}
       <div className="p-4 bg-neutral-900 border border-neutral-700 rounded-xl">
         <div className="flex justify-between items-center">
           <div>
-            <div className="text-sm text-neutral-400">Tokens at Table</div>
+            <div className="text-sm text-neutral-400">Chips at Table</div>
             <div className="text-lg font-mono font-semibold text-green-400">
-              {tokensInPlay.toFixed(6)} {selectedToken}
+              {chipsAtTable.toFixed(6)} {selectedToken}
             </div>
           </div>
           <a
