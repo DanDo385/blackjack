@@ -2,8 +2,7 @@
 import Navbar from '@/components/Navbar'
 import TableCanvas from '@/components/TableCanvas'
 import { AlertBus } from '@/components/AlertBus'
-import PlayBetControls from '@/components/PlayBetControls'
-import GameActions from '@/components/GameActions'
+import BetControls from '@/components/BetControls'
 import { useStore } from '@/lib/store'
 
 export default function Play(){
@@ -33,10 +32,7 @@ export default function Play(){
         )}
 
         <div className="mt-6">
-          <PlayBetControls/>
-        </div>
-        <div className="mt-6">
-          <GameActions/>
+          <BetControls/>
         </div>
       </main>
     </>

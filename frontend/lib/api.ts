@@ -1,241 +1,348 @@
-import type { GameState } from '@/lib/store'
-import type { EngineState, BetRequest, BetResponse, ActionRequest, ActionResponse } from '@/lib/types'
+import type { EngineState, BetRequest, BetResponse, ActionResponse } from '@/lib/types'
+import { validateEngineState, validateBetResponse, validateActionResponse } from '@/lib/validation'
 
 /**
- * API client with error handling
+ * API Client Module - Blackjack Game API
  *
- * Usage:
- * - getJSON<T>(path) - GET request
- * - postJSON<T>(path, body) - POST request with JSON body
- * - putJSON<T>(path, body) - PUT request with JSON body
- *
- * All requests include proper error handling and logging.
+ * CRITICAL DESIGN DECISIONS:
+ * 1. Client-side only - all relative URLs (proxied by Next.js)
+ * 2. No SSR - throws if called server-side to prevent deploymentId errors
+ * 3. Graceful fallbacks - returns null/empty responses on error instead of throwing
+ * 4. Deal button protection - prevents double-dealing with request-level blocking
+ * 5. Simple error handling - minimal logging, maximum stability
  */
 
-// Use relative URLs in browser (proxied via Next.js rewrites) to avoid CORS
-// Always use relative URLs for client-side requests to avoid SSR issues
-const getBaseUrl = () => {
-  // Always use relative URL in browser (proxied via Next.js rewrites)
-  // This prevents SSR issues and deploymentId errors
-  if (typeof window !== 'undefined') {
-    return ''
-  }
-  // Server-side: use absolute URL (only if needed for SSR/API routes)
-  return process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080'
+// ============================================================================
+// STATE MANAGEMENT - Prevent double-dealing
+// ============================================================================
+
+let activeDealRequest = false
+
+function isDealInProgress(): boolean {
+  return activeDealRequest
 }
 
-/**
- * Helper to check if response is ok, throw otherwise
- */
-async function throwIfNotOk(res: Response) {
-  if (!res.ok) {
-    // Try to get detailed error from response body
-    let errorDetail = ''
-    try {
-      const errorBody = await res.text()
-      errorDetail = errorBody ? ` - ${errorBody}` : ''
-      console.error('API Error Details:', {
-        status: res.status,
-        statusText: res.statusText,
-        url: res.url,
-        body: errorBody,
-      })
-    } catch (e) {
-      console.error('Failed to read error response body:', e)
-    }
-    throw new Error(`API error: ${res.status} ${res.statusText}${errorDetail}`)
-  }
+function resetDealState() {
+  activeDealRequest = false
 }
 
+// ============================================================================
+// BASE URL - Always relative (client-side only)
+// ============================================================================
+
+const BASE_URL = ''
+
+// ============================================================================
+// CORE HTTP METHODS
+// ============================================================================
+
 /**
- * Generic GET request
- * Client-side only - uses relative URLs proxied by Next.js
+ * GET request with minimal error handling
+ * Returns null on error instead of throwing
  */
-export async function getJSON<T>(path: string): Promise<T> {
-  // Ensure this only runs client-side to avoid SSR/deploymentId issues
+export async function getJSON<T>(path: string): Promise<T | null> {
   if (typeof window === 'undefined') {
-    throw new Error('getJSON can only be called from client-side code')
+    console.warn('[API] getJSON called server-side, returning null')
+    return null
   }
 
   try {
-    const url = getBaseUrl() + path
-    console.log(`GET ${path} - requesting...`)
+    const url = BASE_URL + path
     const res = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
     })
-    await throwIfNotOk(res)
-    const data = await res.json()
-    console.log(`GET ${path} - success:`, data)
-    return data
+
+    // If not ok, return null
+    if (!res.ok) {
+      console.warn(`[API] GET ${path} failed: ${res.status} ${res.statusText}`)
+      return null
+    }
+
+    // Handle 204 No Content
+    if (res.status === 204) {
+      return undefined as T
+    }
+
+    // Parse and return
+    try {
+      const data = await res.json()
+      return data as T
+    } catch {
+      console.warn(`[API] GET ${path} - failed to parse JSON`)
+      return null
+    }
   } catch (error) {
-    console.error(`GET ${path} failed:`, error)
-    throw error
+    console.warn(`[API] GET ${path} error:`, error instanceof Error ? error.message : String(error))
+    return null
   }
 }
 
 /**
- * Generic POST request
- * Client-side only - uses relative URLs proxied by Next.js
+ * POST request with minimal error handling
+ * Returns null on error instead of throwing
  */
-export async function postJSON<T>(path: string, body: any): Promise<T> {
-  // Ensure this only runs client-side to avoid SSR/deploymentId issues
+export async function postJSON<T>(path: string, body: any): Promise<T | null> {
   if (typeof window === 'undefined') {
-    throw new Error('postJSON can only be called from client-side code')
+    console.warn('[API] postJSON called server-side, returning null')
+    return null
   }
 
   try {
-    const url = getBaseUrl() + path
-    console.log(`POST ${path} - requesting with body:`, body)
+    const url = BASE_URL + path
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    await throwIfNotOk(res)
-    const data = await res.json()
-    console.log(`POST ${path} - success:`, data)
-    return data
+
+    // If not ok, return null
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => '')
+      console.warn(`[API] POST ${path} failed: ${res.status} ${res.statusText}`, errorText)
+      return null
+    }
+
+    // Parse and return
+    try {
+      const data = await res.json()
+      return data as T
+    } catch {
+      console.warn(`[API] POST ${path} - failed to parse JSON`)
+      return null
+    }
   } catch (error) {
-    console.error(`POST ${path} failed:`, error)
-    throw error
+    console.warn(`[API] POST ${path} error:`, error instanceof Error ? error.message : String(error))
+    return null
   }
 }
 
 /**
- * Generic PUT request
- * Client-side only - uses relative URLs proxied by Next.js
+ * PUT request with minimal error handling
+ * Returns null on error instead of throwing
  */
-export async function putJSON<T>(path: string, body: any): Promise<T> {
-  // Ensure this only runs client-side to avoid SSR/deploymentId issues
+export async function putJSON<T>(path: string, body: any): Promise<T | null> {
   if (typeof window === 'undefined') {
-    throw new Error('putJSON can only be called from client-side code')
+    console.warn('[API] putJSON called server-side, returning null')
+    return null
   }
-  
+
   try {
-    const url = getBaseUrl() + path
+    const url = BASE_URL + path
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    throwIfNotOk(res)
-    return await res.json()
-  } catch (error) {
-    console.error(`PUT ${path} failed:`, error)
-    throw error
-  }
-}
 
-/**
- * Get current engine state
- * Falls back to default state if API is unavailable
- */
-export async function getEngineState(): Promise<Partial<EngineState>> {
-  try {
-    console.log('getEngineState - fetching engine state...')
-    const state = await getJSON<EngineState>('/api/engine/state')
-    console.log('getEngineState - received state:', state)
-    return state
-  } catch (error) {
-    console.error('getEngineState - failed to fetch engine state:', error)
-    console.warn('Engine state unavailable, using defaults:', error)
-    // Return sensible defaults when backend is down
-    return {
-      phase: 'WAITING_FOR_DEAL',
-      phaseDetail: 'Waiting for player to place bet and deal',
-      handId: 0,
-      deckInitialized: false,
-      cardsDealt: 0,
-      totalCards: 0,
-      dealerHand: [],
-      playerHand: [],
-      outcome: '',
-      payout: '0',
-      trueCount: 0,
-      shoePct: 0,
-      runningCount: 0,
-      anchor: 100,
-      spreadNum: 4,
-      lastBet: 0,
-      growthCapBps: 3300,
-      tableMin: 5,
-      tableMax: 5000,
-      lastUpdated: Date.now() / 1000,
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => '')
+      console.warn(`[API] PUT ${path} failed: ${res.status} ${res.statusText}`, errorText)
+      return null
     }
-  }
-}
 
-/**
- * Place a bet and deal cards
- */
-export async function placeBet(request: BetRequest): Promise<BetResponse> {
-  console.log('placeBet - placing bet with request:', request)
-  try {
-    const response = await postJSON<BetResponse>('/api/engine/bet', request)
-    console.log('placeBet - bet placed successfully:', response)
-    return response
+    try {
+      const data = await res.json()
+      return data as T
+    } catch {
+      console.warn(`[API] PUT ${path} - failed to parse JSON`)
+      return null
+    }
   } catch (error) {
-    console.error('placeBet - failed to place bet:', error)
-    throw error
+    console.warn(`[API] PUT ${path} error:`, error instanceof Error ? error.message : String(error))
+    return null
+  }
+}
+
+// ============================================================================
+// GAME ENGINE FUNCTIONS
+// ============================================================================
+
+/**
+ * Get current game engine state
+ * Safe to call frequently (polling, etc.)
+ * Returns null if API fails
+ */
+export async function getEngineState(): Promise<EngineState | null> {
+  const response = await getJSON<any>('/api/engine/state')
+
+  if (!response) {
+    return null
+  }
+
+  // Validate response structure
+  if (!validateEngineState(response)) {
+    console.warn('[API] Invalid engine state structure')
+    return null
+  }
+
+  return response
+}
+
+/**
+ * Place a bet and deal initial cards
+ * Prevents double-dealing by tracking active requests
+ */
+export async function placeBet(request: BetRequest): Promise<BetResponse | null> {
+  // Prevent double-dealing
+  if (isDealInProgress()) {
+    console.warn('[API] Deal already in progress')
+    return null
+  }
+
+  activeDealRequest = true
+
+  try {
+    const response = await postJSON<any>('/api/engine/bet', request)
+
+    if (!response) {
+      console.warn('[API] placeBet - no response from server')
+      return null
+    }
+
+    // Validate response
+    if (!validateBetResponse(response)) {
+      console.warn('[API] placeBet - invalid response structure')
+      return null
+    }
+
+    return response
+  } finally {
+    resetDealState()
   }
 }
 
 /**
- * Player hits (requests another card)
+ * Player hit action
  */
-export async function playerHit(handId: number): Promise<ActionResponse> {
-  return postJSON<ActionResponse>('/api/game/hit', { handId })
+export async function playerHit(handId: number): Promise<ActionResponse | null> {
+  if (!handId || handId <= 0) {
+    console.warn('[API] Invalid handId for hit:', handId)
+    return null
+  }
+
+  const response = await postJSON<any>('/api/game/hit', { handId })
+
+  if (!response) {
+    return null
+  }
+
+  if (!validateActionResponse(response)) {
+    console.warn('[API] playerHit - invalid response structure')
+    return null
+  }
+
+  return response
 }
 
 /**
- * Player stands (ends their turn)
+ * Player stand action
  */
-export async function playerStand(handId: number): Promise<ActionResponse> {
-  return postJSON<ActionResponse>('/api/game/stand', { handId })
+export async function playerStand(handId: number): Promise<ActionResponse | null> {
+  if (!handId || handId <= 0) {
+    console.warn('[API] Invalid handId for stand:', handId)
+    return null
+  }
+
+  const response = await postJSON<any>('/api/game/stand', { handId })
+
+  if (!response) {
+    return null
+  }
+
+  if (!validateActionResponse(response)) {
+    console.warn('[API] playerStand - invalid response structure')
+    return null
+  }
+
+  return response
 }
 
 /**
- * Player doubles down
+ * Player double down action
  */
-export async function playerDouble(handId: number): Promise<ActionResponse> {
-  return postJSON<ActionResponse>('/api/game/double', { handId })
+export async function playerDouble(handId: number): Promise<ActionResponse | null> {
+  if (!handId || handId <= 0) {
+    console.warn('[API] Invalid handId for double:', handId)
+    return null
+  }
+
+  const response = await postJSON<any>('/api/game/double', { handId })
+
+  if (!response) {
+    return null
+  }
+
+  if (!validateActionResponse(response)) {
+    console.warn('[API] playerDouble - invalid response structure')
+    return null
+  }
+
+  return response
 }
 
 /**
- * Player splits their hand
+ * Player split action
  */
-export async function playerSplit(handId: number): Promise<ActionResponse> {
-  return postJSON<ActionResponse>('/api/game/split', { handId })
+export async function playerSplit(handId: number): Promise<ActionResponse | null> {
+  if (!handId || handId <= 0) {
+    console.warn('[API] Invalid handId for split:', handId)
+    return null
+  }
+
+  const response = await postJSON<any>('/api/game/split', { handId })
+
+  if (!response) {
+    return null
+  }
+
+  if (!validateActionResponse(response)) {
+    console.warn('[API] playerSplit - invalid response structure')
+    return null
+  }
+
+  return response
+}
+
+// ============================================================================
+// USER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get user hand history
+ */
+export async function getUserHands(playerAddress: string, limit = 100): Promise<any[] | null> {
+  if (!playerAddress) {
+    console.warn('[API] Invalid playerAddress for getUserHands')
+    return null
+  }
+
+  const response = await getJSON<any[]>(`/api/user/hands?player=${encodeURIComponent(playerAddress)}&limit=${limit}`)
+  return response
 }
 
 /**
- * Player buys/declines insurance
+ * Get user summary statistics
  */
-export async function playerInsurance(handId: number, buyInsurance: boolean): Promise<ActionResponse> {
-  return postJSON<ActionResponse>('/api/game/insurance', { handId, buyInsurance })
+export async function getUserSummary(playerAddress: string): Promise<any | null> {
+  if (!playerAddress) {
+    console.warn('[API] Invalid playerAddress for getUserSummary')
+    return null
+  }
+
+  const response = await getJSON<any>(`/api/user/summary?player=${encodeURIComponent(playerAddress)}`)
+  return response
 }
+
+// ============================================================================
+// TREASURY FUNCTIONS
+// ============================================================================
 
 /**
- * Get user hands/history
+ * Get treasury overview data
  */
-export async function getUserHands(playerAddress: string, limit = 100) {
-  return getJSON(`/api/user/hands?player=${playerAddress}&limit=${limit}`)
+export async function getTreasuryOverview(): Promise<any | null> {
+  const response = await getJSON<any>('/api/treasury/overview')
+  return response
 }
-
-/**
- * Get user summary stats
- */
-export async function getUserSummary(playerAddress: string) {
-  return getJSON(`/api/user/summary?player=${playerAddress}`)
-}
-
-/**
- * Get treasury overview
- */
-export async function getTreasuryOverview() {
-  return getJSON('/api/treasury/overview')
-}
-
-

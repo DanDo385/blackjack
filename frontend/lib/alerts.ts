@@ -47,10 +47,25 @@ export type TokensBroughtData = {
   token: string
 }
 
-// ============================================================================ 
+// ============================================================================
 // Callback Management (for bet-again functionality)
-// ============================================================================ 
+// ============================================================================
 
+/**
+ * Global callback registry for bet-again prompts
+ *
+ * This uses module-level mutable state to bridge the gap between:
+ * - React components that show toast alerts (can't hold callbacks)
+ * - Toast UI (showBetAgainPrompt) that needs to trigger callbacks
+ *
+ * Flow:
+ * 1. Component calls setBetAgainCallback() with its callback
+ * 2. showWinAlert/showLossAlert() calls showBetAgainPrompt() with betAgainCallback
+ * 3. User clicks OK/Cancel in toast, betAgainCallback gets invoked
+ * 4. Component calls clearBetAgainCallback() for cleanup
+ *
+ * TODO: Replace with React Context or custom hook for better SSR/testability
+ */
 type BetAgainCallback = (confirmed: boolean) => void
 let betAgainCallback: BetAgainCallback | null = null
 

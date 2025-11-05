@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,9 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/DanDo385/blackjack/backend/internal/contracts"
 	"github.com/DanDo385/blackjack/backend/internal/game"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // Card represents a playing card
@@ -83,12 +80,71 @@ func dealInitialHands() ([]string, []string) {
 	return dealerHand, playerHand
 }
 
+// ErrorResponse represents a structured error response
+type ErrorResponse struct {
+	Error struct {
+		Code    string                 `json:"code"`
+		Message string                 `json:"message"`
+		Details map[string]interface{} `json:"details,omitempty"`
+	} `json:"error"`
+}
+
+// writeError writes a structured error response
+func writeError(w http.ResponseWriter, status int, code, message string, details map[string]interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	
+	var resp ErrorResponse
+	resp.Error.Code = code
+	resp.Error.Message = message
+	if details != nil {
+		resp.Error.Details = details
+	}
+	
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[writeError] Failed to encode error response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+// logError logs a structured error with context
+func logError(route, operation string, err error, details map[string]interface{}) {
+	log.Printf("[%s] ERROR %s: %v", route, operation, err)
+	if details != nil {
+		log.Printf("[%s] Details: %+v", route, details)
+	}
+}
+
 func GetEngineState(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[GetEngineState] Incoming request from %s", r.RemoteAddr)
+	// Recover from any panics
+	defer func() {
+		if rec := recover(); rec != nil {
+			logError("GetEngineState", "panic recovered", fmt.Errorf("%v", rec), map[string]interface{}{
+				"status": http.StatusInternalServerError,
+				"route":  "/api/engine/state",
+			})
+			writeError(w, http.StatusInternalServerError, "PANIC_ERROR", "Internal server error occurred", map[string]interface{}{
+				"panic": fmt.Sprintf("%v", rec),
+			})
+		}
+	}()
+
+	log.Printf("[GetEngineState] Incoming request from %s %s", r.Method, r.RemoteAddr)
 
 	// Get the global engine instance (always returns valid state)
 	engine := game.GetEngine()
+	if engine == nil {
+		logError("GetEngineState", "engine nil", fmt.Errorf("engine instance is nil"), nil)
+		writeError(w, http.StatusInternalServerError, "ENGINE_ERROR", "Game engine not available", nil)
+		return
+	}
+
 	state := engine.GetState()
+	if state == nil {
+		logError("GetEngineState", "state nil", fmt.Errorf("engine state is nil"), nil)
+		writeError(w, http.StatusInternalServerError, "STATE_ERROR", "Game state not available", nil)
+		return
+	}
 
 	log.Printf("[GetEngineState] Current phase: %s, detail: %s", state.Phase, state.PhaseDetail)
 	log.Printf("[GetEngineState] HandID: %d, DeckInitialized: %v, CardsDealt: %d/%d",
@@ -128,13 +184,23 @@ func GetEngineState(w http.ResponseWriter, r *http.Request) {
 		"tableMax":       state.TableMax,
 
 		// Metadata
-		"lastUpdated":    state.LastUpdated.Unix(),
+		"lastUpdated":    func() int64 {
+			if state.LastUpdated.IsZero() {
+				return 0
+			}
+			return state.LastUpdated.Unix()
+		}(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("[GetEngineState] Error encoding response: %v", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		logError("GetEngineState", "encode response", err, map[string]interface{}{
+			"status": http.StatusInternalServerError,
+			"route":  "/api/engine/state",
+		})
+		writeError(w, http.StatusInternalServerError, "ENCODE_ERROR", "Failed to encode response", map[string]interface{}{
+			"original_error": err.Error(),
+		})
 		return
 	}
 
@@ -142,6 +208,19 @@ func GetEngineState(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostBet(w http.ResponseWriter, r *http.Request) {
+	// Recover from any panics
+	defer func() {
+		if rec := recover(); rec != nil {
+			logError("PostBet", "panic recovered", fmt.Errorf("%v", rec), map[string]interface{}{
+				"status": http.StatusInternalServerError,
+				"route":  "/api/engine/bet",
+			})
+			writeError(w, http.StatusInternalServerError, "PANIC_ERROR", "Internal server error occurred during bet placement", map[string]interface{}{
+				"panic": fmt.Sprintf("%v", rec),
+			})
+		}
+	}()
+
 	log.Printf("[PostBet] Incoming bet request from %s", r.RemoteAddr)
 
 	var req struct {
@@ -152,8 +231,10 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("[PostBet] Error decoding request: %v", err)
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		logError("PostBet", "decode request", err, nil)
+		writeError(w, http.StatusBadRequest, "DECODE_ERROR", "Invalid request format", map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -182,9 +263,20 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 
 	// Get engine and start hand
 	engine := game.GetEngine()
+	if engine == nil {
+		logError("PostBet", "get engine", fmt.Errorf("engine is nil"), nil)
+		writeError(w, http.StatusInternalServerError, "ENGINE_ERROR", "Game engine not available", nil)
+		return
+	}
+
 	if err := engine.StartHand(handID, playerAddr, tokenAddr, amountWei.String(), req.Amount); err != nil {
-		log.Printf("[PostBet] Error starting hand: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to start hand: %v", err), http.StatusInternalServerError)
+		logError("PostBet", "start hand", err, map[string]interface{}{
+			"handId": handID,
+			"player": playerAddr,
+		})
+		writeError(w, http.StatusInternalServerError, "START_HAND_ERROR", "Failed to start hand", map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -196,13 +288,24 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 
 	// Shuffle and deal
 	if err := engine.ShuffleAndDeal(seed); err != nil {
-		log.Printf("[PostBet] Error shuffling and dealing: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to shuffle and deal: %v", err), http.StatusInternalServerError)
+		logError("PostBet", "shuffle and deal", err, map[string]interface{}{
+			"handId": handID,
+		})
+		writeError(w, http.StatusInternalServerError, "SHUFFLE_ERROR", "Failed to shuffle and deal cards", map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	// Get current state
 	state := engine.GetState()
+	if state == nil {
+		logError("PostBet", "get state", fmt.Errorf("state is nil after ShuffleAndDeal"), map[string]interface{}{
+			"handId": handID,
+		})
+		writeError(w, http.StatusInternalServerError, "STATE_ERROR", "Failed to retrieve game state", nil)
+		return
+	}
 
 	log.Printf("[PostBet] Cards dealt: phase=%s, dealer=%v, player=%v",
 		state.Phase, state.DealerHand, state.PlayerHand)
@@ -220,8 +323,12 @@ func PostBet(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("[PostBet] Error encoding response: %v", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		logError("PostBet", "encode response", err, map[string]interface{}{
+			"handId": handID,
+		})
+		writeError(w, http.StatusInternalServerError, "ENCODE_ERROR", "Failed to encode response", map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 

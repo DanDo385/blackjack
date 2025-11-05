@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GamePhase, GameOutcome } from './types'
+import { getPhaseDescription } from './types'
 
 /**
  * Game state store using Zustand
@@ -9,7 +10,6 @@ import type { GamePhase, GameOutcome } from './types'
  * - Betting parameters: anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax
  * - Raw card counting: cardsDealt, runningCount (for computing true count)
  * - Phase tracking: current game phase (WAITING_FOR_DEAL, SHUFFLING, etc.)
- * - Chips at table: single source of truth for player's chips
  */
 export type GameState = {
   // Phase tracking (new state machine)
@@ -38,10 +38,15 @@ export type GameState = {
   wager: number        // Current wager input
   wagerStep: number    // Increment step for +/- buttons
 
-  // Game state - chips at table is the single source of truth
-  chipsAtTable: number // Amount of chips/tokens at table (updates based on wins/losses)
-  tokenInPlay: string // Token symbol (ETH, USDC, etc.)
-  selectedToken: string // Currently selected token for betting
+  // Game state - Token tracking
+  // Note: Three related fields with distinct purposes:
+  // - tokensInPlay: Amount of tokens brought to the table (number)
+  // - tokenInPlay: Symbol of the token actually in play (e.g., "USDC", "ETH")
+  // - selectedToken: Token symbol selected in UI for betting (before bringing to table)
+  tokensInPlay: number         // Amount of tokens at the table
+  tokenInPlay: string          // Token symbol currently in play ("USDC", "ETH", etc.)
+  selectedToken: string        // Token selected in betting UI (default: "USDC")
+  chipsAtTable: number         // Amount of chips/tokens available for play
   gameActive: boolean
   dealerHand: string[] // Card image paths
   playerHand: string[] // Card image paths
@@ -53,13 +58,27 @@ export type GameState = {
   outcome: GameOutcome
   payout: string
 
+  // Scoreboard metrics
+  playerWinnings: number
+  playerLosses: number
+  dealerWins: number
+
   // Actions
   newShoe: () => void
   resetCounting: () => void
-  setChipsAtTable: (amount: number, token: string) => void
-  updateChipsAfterHand: (payout: number, outcome: string) => void // Update chips based on hand outcome
+  setTokensInPlay: (amount: number, token: string) => void
+  setChipsAtTable: (amount: number) => void
+  updateChipsAtTable: (delta: number) => void // Update chips when hand is won/lost
   cashOut: () => void
-  setGameState: (dealerHand: string[], playerHand: string[], handId: number) => void
+  setGameState: (update: {
+    dealerHand?: string[]
+    playerHand?: string[]
+    handId?: number | null
+    phase?: GamePhase
+    phaseDetail?: string
+    outcome?: GameOutcome
+    payout?: string
+  }) => void
   setWager: (value: number) => void
   setWagerStep: (value: number) => void
   setLastWager: (value: number) => void
@@ -69,16 +88,18 @@ export type GameState = {
     growthCapBps?: number
     tableMin?: number
     tableMax?: number
+    lastBet?: number
   }) => void
   endHand: () => void // Ends hand and shows re-deal prompt
   closeReDealPrompt: () => void
-  resetHand: () => void // Resets hand state for new deal
+  resetHand: () => void
+  updateChipsAfterHand: (payout: number, wagerLost: number, outcome: string) => void
 }
 
-const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setChipsAtTable' | 'updateChipsAfterHand' | 'cashOut' | 'setGameState' | 'setWager' | 'setWagerStep' | 'setLastWager' | 'setBettingParams' | 'endHand' | 'closeReDealPrompt' | 'resetHand'> = {
+const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInPlay' | 'setChipsAtTable' | 'updateChipsAtTable' | 'cashOut' | 'setGameState' | 'setWager' | 'setWagerStep' | 'setLastWager' | 'setBettingParams' | 'endHand' | 'closeReDealPrompt' | 'resetHand' | 'updateChipsAfterHand'> = {
   // Phase tracking
   phase: 'WAITING_FOR_DEAL',
-  phaseDetail: 'Waiting for player to place bet and deal',
+  phaseDetail: '',
 
   // Start with 0% shoe dealt, 0 true count
   trueCount: 0,
@@ -103,9 +124,10 @@ const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setChipsAtTa
   wagerStep: 10, // Default to 10 chips
 
   // Game state
-  chipsAtTable: 0,
+  tokensInPlay: 0,
   tokenInPlay: '',
-  selectedToken: 'ETH', // Default to ETH
+  selectedToken: 'USDC',
+  chipsAtTable: 0, // Amount checked in with
   gameActive: false,
   dealerHand: [],
   playerHand: [],
@@ -116,6 +138,11 @@ const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setChipsAtTa
   // Outcome
   outcome: '',
   payout: '0',
+
+  // Scoreboard metrics
+  playerWinnings: 0,
+  playerLosses: 0,
+  dealerWins: 0,
 }
 
 export const useStore = create<GameState>((set, get) => {
@@ -155,6 +182,9 @@ export const useStore = create<GameState>((set, get) => {
           if (typeof parsed.wagerStep === 'number' && parsed.wagerStep > 0) {
             INITIAL_STATE.wagerStep = parsed.wagerStep
           }
+          if (typeof parsed.lastBet === 'number' && parsed.lastBet >= 0) {
+            INITIAL_STATE.lastBet = parsed.lastBet
+          }
         }
       }
     } catch (error) {
@@ -177,176 +207,179 @@ export const useStore = create<GameState>((set, get) => {
         // Keep betting params
       }),
 
-    /**
-     * Reset counting without changing betting state
-     */
-    resetCounting: () =>
-      set({
-        cardsDealt: 0,
-        runningCount: 0,
-        trueCount: 0,
-        shoePct: 0,
-      }),
+  /**
+   * Reset counting without changing betting state
+   */
+  resetCounting: () =>
+    set({
+      cardsDealt: 0,
+      runningCount: 0,
+      trueCount: 0,
+      shoePct: 0,
+    }),
 
-    /**
-     * Set chips brought to table (called from check-in)
-     */
-    setChipsAtTable: (amount: number, token: string) =>
-      set({
-        chipsAtTable: amount,
-        tokenInPlay: token,
-        selectedToken: token,
-        gameActive: amount > 0,
-      }),
+  /**
+   * Set tokens brought to table
+   */
+  setTokensInPlay: (amount: number, token: string) =>
+    set({
+      tokensInPlay: amount,
+      tokenInPlay: token,
+      selectedToken: token,
+      gameActive: amount > 0,
+    }),
 
-    /**
-     * Update chips at table after hand completes based on outcome
-     */
-    updateChipsAfterHand: (payout: number, outcome: string) =>
-      set((state) => {
-        const currentChips = state.chipsAtTable
-        const wager = state.wager
+  /**
+   * Set chips at table (amount checked in with)
+   */
+  setChipsAtTable: (amount: number) =>
+    set({
+      chipsAtTable: Math.max(0, amount),
+    }),
 
-        let newChips = currentChips
+  /**
+   * Update chips at table (for wins/losses)
+   */
+  updateChipsAtTable: (delta: number) =>
+    set((state) => ({
+      chipsAtTable: Math.max(0, state.chipsAtTable + delta),
+    })),
 
-        // Update chips based on outcome
-        if (outcome === 'win') {
-          newChips = currentChips + payout
-        } else if (outcome === 'lose') {
-          newChips = currentChips - wager
-        } else if (outcome === 'push') {
-          // No change for push
-          newChips = currentChips
+  /**
+   * Cash out - reset tokens and return to betting phase
+   */
+  cashOut: () =>
+    set({
+      tokensInPlay: 0,
+      tokenInPlay: '',
+      chipsAtTable: 0,
+      gameActive: false,
+      dealerHand: [],
+      playerHand: [],
+      handId: null,
+      handDealt: false,
+      phase: 'WAITING_FOR_DEAL',
+      phaseDetail: '',
+    }),
+
+  /**
+   * Update game state with dealer/player hands
+   */
+  setGameState: (update) =>
+    set((state) => ({
+      dealerHand: update.dealerHand ?? state.dealerHand,
+      playerHand: update.playerHand ?? state.playerHand,
+      handId: update.handId ?? state.handId,
+      phase: update.phase ?? state.phase,
+      phaseDetail:
+        update.phaseDetail ??
+        (update.phase ? getPhaseDescription(update.phase) : state.phaseDetail),
+      outcome: update.outcome ?? state.outcome,
+      payout: update.payout ?? state.payout,
+      gameActive: true,
+      handDealt: true,
+    })),
+
+  /**
+   * Set current wager value
+   */
+  setWager: (value: number) =>
+    set({
+      wager: Math.max(0, value),
+    }),
+
+  /**
+   * Set wager increment step
+   */
+  setWagerStep: (value: number) => {
+    set({
+      wagerStep: Math.max(0.0001, value),
+    })
+    // Persist betting params after wager step change
+    if (typeof window !== 'undefined') {
+      try {
+        const state = get()
+        const bettingParams = {
+          anchor: state.anchor,
+          spreadNum: state.spreadNum,
+          growthCapBps: state.growthCapBps,
+          tableMin: state.tableMin,
+          tableMax: state.tableMax,
+          wagerStep: state.wagerStep,
         }
-
-        return {
-          chipsAtTable: Math.max(0, newChips), // Never go negative
-          payout: String(payout),
-          outcome: outcome as GameOutcome,
-        }
-      }),
-
-    /**
-     * Cash out - reset chips and return to betting phase
-     */
-    cashOut: () =>
-      set({
-        chipsAtTable: 0,
-        tokenInPlay: '',
-        gameActive: false,
-        dealerHand: [],
-        playerHand: [],
-        handId: null,
-        handDealt: false,
-      }),
-
-    /**
-     * Update game state with dealer/player hands
-     */
-    setGameState: (dealerHand: string[], playerHand: string[], handId: number) =>
-      set({
-        dealerHand,
-        playerHand,
-        handId,
-        gameActive: true,
-        handDealt: true,
-      }),
-
-    /**
-     * Set current wager value
-     */
-    setWager: (value: number) =>
-      set({
-        wager: Math.max(0, value),
-      }),
-
-    /**
-     * Set wager increment step
-     */
-    setWagerStep: (value: number) => {
-      set({
-        wagerStep: Math.max(0.0001, value),
-      })
-      // Persist betting params after wager step change
-      if (typeof window !== 'undefined') {
-        try {
-          const state = get()
-          const bettingParams = {
-            anchor: state.anchor,
-            spreadNum: state.spreadNum,
-            growthCapBps: state.growthCapBps,
-            tableMin: state.tableMin,
-            tableMax: state.tableMax,
-            wagerStep: state.wagerStep,
-          }
-          localStorage.setItem('bettingParams', JSON.stringify(bettingParams))
-        } catch (error) {
-          console.warn('Failed to save bettingParams to localStorage:', error)
-        }
+        localStorage.setItem('bettingParams', JSON.stringify(bettingParams))
+      } catch (error) {
+        console.warn('Failed to save bettingParams to localStorage:', error)
       }
-    },
+    }
+  },
 
-    /**
-     * Set last wager (persisted default)
-     */
-    setLastWager: (value: number) => {
-      set({ lastWager: value })
-      // Persist to localStorage
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('lastWager', String(value))
-        } catch (error) {
-          console.warn('Failed to save lastWager to localStorage:', error)
-        }
+  /**
+   * Set last wager (persisted default)
+   */
+  setLastWager: (value: number) => {
+    set({ lastWager: value })
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('lastWager', String(value))
+      } catch (error) {
+        console.warn('Failed to save lastWager to localStorage:', error)
       }
-    },
+    }
+  },
 
-    /**
-     * Set betting parameters (anchor, spreadNum, tableMin, tableMax, etc.)
-     * Automatically persists to localStorage
-     */
-    setBettingParams: (params: {
-      anchor?: number
-      spreadNum?: number
-      growthCapBps?: number
-      tableMin?: number
-      tableMax?: number
-    }) => {
-      set((state) => ({
-        anchor: params.anchor ?? state.anchor,
-        spreadNum: params.spreadNum ?? state.spreadNum,
-        growthCapBps: params.growthCapBps ?? state.growthCapBps,
-        tableMin: params.tableMin ?? state.tableMin,
-        tableMax: params.tableMax ?? state.tableMax,
-      }))
-      // Persist to localStorage
-      if (typeof window !== 'undefined') {
-        try {
-          const state = get()
-          const bettingParams = {
-            anchor: state.anchor,
-            spreadNum: state.spreadNum,
-            growthCapBps: state.growthCapBps,
-            tableMin: state.tableMin,
-            tableMax: state.tableMax,
-            wagerStep: state.wagerStep,
-          }
-          localStorage.setItem('bettingParams', JSON.stringify(bettingParams))
-        } catch (error) {
-          console.warn('Failed to save bettingParams to localStorage:', error)
+  /**
+   * Set betting parameters (anchor, spreadNum, tableMin, tableMax, lastBet, etc.)
+   * Automatically persists to localStorage
+   */
+  setBettingParams: (params: {
+    anchor?: number
+    spreadNum?: number
+    growthCapBps?: number
+    tableMin?: number
+    tableMax?: number
+    lastBet?: number
+  }) => {
+    set((state) => ({
+      anchor: params.anchor ?? state.anchor,
+      spreadNum: params.spreadNum ?? state.spreadNum,
+      growthCapBps: params.growthCapBps ?? state.growthCapBps,
+      tableMin: params.tableMin ?? state.tableMin,
+      tableMax: params.tableMax ?? state.tableMax,
+      lastBet: params.lastBet ?? state.lastBet,
+    }))
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const state = get()
+        const bettingParams = {
+          anchor: state.anchor,
+          spreadNum: state.spreadNum,
+          growthCapBps: state.growthCapBps,
+          tableMin: state.tableMin,
+          tableMax: state.tableMax,
+          lastBet: state.lastBet,
+          wagerStep: state.wagerStep,
         }
+        localStorage.setItem('bettingParams', JSON.stringify(bettingParams))
+      } catch (error) {
+        console.warn('Failed to save bettingParams to localStorage:', error)
       }
-    },
+    }
+  },
 
-    /**
-     * End hand and show re-deal prompt
-     */
-    endHand: () =>
-      set({
-        gameActive: false,
-        handDealt: false,
-        showReDealPrompt: true,
-      }),
+  /**
+   * End hand and show re-deal prompt
+   */
+  endHand: () =>
+    set({
+      gameActive: false,
+      handDealt: false,
+      showReDealPrompt: true,
+      phase: 'COMPLETE',
+      phaseDetail: getPhaseDescription('COMPLETE'),
+    }),
 
     /**
      * Close re-deal prompt
@@ -365,6 +398,25 @@ export const useStore = create<GameState>((set, get) => {
         playerHand: [],
         handId: null,
         handDealt: false,
+        phase: 'WAITING_FOR_DEAL',
+        phaseDetail: '',
+      }),
+
+    /**
+     * Update chips and scoreboard metrics after a hand completes
+     */
+    updateChipsAfterHand: (payout: number, wagerLost: number, outcome: string) =>
+      set((state) => {
+        const newTotals = {
+          chipsAtTable: state.chipsAtTable + payout - wagerLost,
+          playerWinnings: state.playerWinnings,
+          playerLosses: state.playerLosses,
+          dealerWins: state.dealerWins,
+        }
+        if (outcome === 'win') newTotals.playerWinnings += payout
+        if (outcome === 'lose') newTotals.playerLosses += wagerLost
+        if (outcome === 'lose' || outcome === 'push') newTotals.dealerWins += 1 // Dealer wins on loss or push
+        return newTotals
       }),
   }
 })

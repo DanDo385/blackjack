@@ -26,6 +26,7 @@
   outline: none;
   box-shadow: none !important;
   border: none;
+  transform-style: preserve-3d;
 }
 
 /* Explicitly disable focus/selection styles */
@@ -40,4 +41,20 @@
   border: none;
 }
 
+@keyframes cardDeal {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) rotateY(-90deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateY(0);
+  }
+}
+
+.card-deal {
+  opacity: 0;
+  animation: cardDeal 0.333s ease forwards;
+  transform-origin: center;
+}
 

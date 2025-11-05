@@ -110,7 +110,7 @@ func GetEngine() *GlobalEngine {
 func newDefaultState() *EngineState {
 	return &EngineState{
 		Phase:          PhaseWaitingForDeal,
-		PhaseDetail:    "Waiting for player to place bet and deal",
+		PhaseDetail:    "",
 		DeckInitialized: false,
 		CardsDealt:     0,
 		TotalCards:     0,
@@ -203,7 +203,7 @@ func (e *GlobalEngine) ShuffleAndDeal(seed []byte) error {
 
 	e.state.Deck = deck
 	e.state.DeckInitialized = true
-	e.state.TotalCards = len(deck.cards)
+	e.state.TotalCards = len(deck.Cards)
 	e.state.CardsDealt = 0
 
 	// Update phase to dealing

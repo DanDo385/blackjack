@@ -17,22 +17,22 @@ func TestDeckShuffleDeterministic(t *testing.T) {
 	deckA.Shuffle(seed)
 	deckB.Shuffle(seed)
 
-	if len(deckA.cards) != len(original.cards) {
-		t.Fatalf("shuffled deck length %d, want %d", len(deckA.cards), len(original.cards))
+	if len(deckA.Cards) != len(original.Cards) {
+		t.Fatalf("shuffled deck length %d, want %d", len(deckA.Cards), len(original.Cards))
 	}
 
-	for i := range deckA.cards {
-		if deckA.cards[i] != deckB.cards[i] {
-			t.Fatalf("shuffle not deterministic at position %d: %+v vs %+v", i, deckA.cards[i], deckB.cards[i])
+	for i := range deckA.Cards {
+		if deckA.Cards[i] != deckB.Cards[i] {
+			t.Fatalf("shuffle not deterministic at position %d: %+v vs %+v", i, deckA.Cards[i], deckB.Cards[i])
 		}
 	}
 
-	cardCounts := make(map[Card]int, len(original.cards))
-	for _, card := range original.cards {
+	cardCounts := make(map[Card]int, len(original.Cards))
+	for _, card := range original.Cards {
 		cardCounts[card]++
 	}
 
-	for _, card := range deckA.cards {
+	for _, card := range deckA.Cards {
 		cardCounts[card]--
 		if cardCounts[card] < 0 {
 			t.Fatalf("card %+v appears more times than expected after shuffle", card)
@@ -52,7 +52,7 @@ func TestDeckDealOrder(t *testing.T) {
 		{Suit: "S", Value: "10"},
 		{Suit: "D", Value: "5"},
 	}
-	deck := &Deck{cards: append([]Card(nil), expected...), index: 0}
+	deck := &Deck{Cards: append([]Card(nil), expected...), index: 0}
 
 	for i, want := range expected {
 		got := deck.Deal()
@@ -118,7 +118,7 @@ func TestDealerPlay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			deck := &Deck{cards: append([]Card(nil), tt.deckCards...), index: 0}
+			deck := &Deck{Cards: append([]Card(nil), tt.deckCards...), index: 0}
 			start := append([]Card(nil), tt.start...)
 
 			result := DealerPlay(deck, start, tt.hitSoft17)
@@ -245,7 +245,7 @@ func TestShuffleRandomness(t *testing.T) {
 		deck := NewDeck(1)
 		deck.Shuffle(seed)
 
-		for pos, card := range deck.cards {
+		for pos, card := range deck.Cards {
 			positionDistribution[pos][card]++
 		}
 	}
@@ -310,23 +310,23 @@ func TestMultiDeckShuffle(t *testing.T) {
 	deck := NewDeck(7) // 7-deck shoe
 
 	expectedSize := 7 * 52
-	if len(deck.cards) != expectedSize {
-		t.Fatalf("new deck size = %d, want %d", len(deck.cards), expectedSize)
+	if len(deck.Cards) != expectedSize {
+		t.Fatalf("new deck size = %d, want %d", len(deck.Cards), expectedSize)
 	}
 
 	deck.Shuffle(seed)
 
-	if len(deck.cards) != expectedSize {
-		t.Fatalf("shuffled deck size = %d, want %d", len(deck.cards), expectedSize)
+	if len(deck.Cards) != expectedSize {
+		t.Fatalf("shuffled deck size = %d, want %d", len(deck.Cards), expectedSize)
 	}
 
 	// Verify all cards are still present
 	cardCounts := make(map[Card]int)
-	for _, card := range NewDeck(7).cards {
+	for _, card := range NewDeck(7).Cards {
 		cardCounts[card]++
 	}
 
-	for _, card := range deck.cards {
+	for _, card := range deck.Cards {
 		cardCounts[card]--
 		if cardCounts[card] < 0 {
 			t.Fatalf("card %+v appears too many times after shuffle", card)
@@ -348,18 +348,18 @@ func TestShuffleChangesOrder(t *testing.T) {
 	shuffled.Shuffle(seed)
 
 	differentPositions := 0
-	for i := range original.cards {
-		if original.cards[i] != shuffled.cards[i] {
+	for i := range original.Cards {
+		if original.Cards[i] != shuffled.Cards[i] {
 			differentPositions++
 		}
 	}
 
 	// With 7 decks (364 cards), expect vast majority to be in different positions
 	// If less than 90% changed, shuffle isn't working properly
-	threshold := len(original.cards) / 10 * 9
+	threshold := len(original.Cards) / 10 * 9
 	if differentPositions < threshold {
 		t.Errorf("only %d cards changed position, want at least %d out of %d",
-			differentPositions, threshold, len(original.cards))
+			differentPositions, threshold, len(original.Cards))
 	}
 }
 
@@ -367,22 +367,22 @@ func TestShuffleChangesOrder(t *testing.T) {
 func TestDealingSequenceAfterShuffle(t *testing.T) {
 	seed := bytes.Repeat([]byte{0x77}, 32)
 	deck := NewDeck(1)
-	original := make([]Card, len(deck.cards))
-	copy(original, deck.cards)
+	original := make([]Card, len(deck.Cards))
+	copy(original, deck.Cards)
 
 	deck.Shuffle(seed)
 
 	// Deal all cards and verify order matches shuffled deck
-	for i := 0; i < len(deck.cards); i++ {
+	for i := 0; i < len(deck.Cards); i++ {
 		dealt := deck.Deal()
-		if dealt != deck.cards[i] {
+		if dealt != deck.Cards[i] {
 			// This shouldn't happen - cards should be dealt in order
-			t.Fatalf("deal %d: got %+v, expected %+v", i, dealt, deck.cards[i])
+			t.Fatalf("deal %d: got %+v, expected %+v", i, dealt, deck.Cards[i])
 		}
 	}
 
-	if deck.index != len(deck.cards) {
-		t.Fatalf("index = %d, want %d", deck.index, len(deck.cards))
+	if deck.index != len(deck.Cards) {
+		t.Fatalf("index = %d, want %d", deck.index, len(deck.Cards))
 	}
 }
 
@@ -402,9 +402,9 @@ func TestStatisticalDistribution(t *testing.T) {
 		deck := NewDeck(1)
 		deck.Shuffle(seed)
 
-		thirdSize := len(deck.cards) / 3
+		thirdSize := len(deck.Cards) / 3
 
-		for pos, card := range deck.cards {
+		for pos, card := range deck.Cards {
 			third := pos / thirdSize
 			if third > 2 {
 				third = 2 // Last card goes to third section
@@ -435,11 +435,11 @@ func TestStatisticalDistribution(t *testing.T) {
 
 // Helper: compare two decks for equality
 func compareDecks(d1, d2 *Deck) bool {
-	if len(d1.cards) != len(d2.cards) {
+	if len(d1.Cards) != len(d2.Cards) {
 		return false
 	}
-	for i := range d1.cards {
-		if d1.cards[i] != d2.cards[i] {
+	for i := range d1.Cards {
+		if d1.Cards[i] != d2.Cards[i] {
 			return false
 		}
 	}

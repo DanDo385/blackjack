@@ -125,23 +125,26 @@ export default function PlayBetControls() {
         token: selectedToken,
       })
 
+      if (!response) {
+        toast.error('Deal failed: No response from server')
+        return
+      }
+
       if (response.handId) {
         // Update store with dealt cards
-        setGameState(
-          response.dealerHand || [],
-          response.playerHand || [],
-          response.handId
-        )
+        setGameState({
+          dealerHand: response.dealerHand || [],
+          playerHand: response.playerHand || [],
+          handId: response.handId,
+          phase: response.phase,
+          phaseDetail: response.phaseDetail,
+        })
 
-        // Persist wager and wagerStep for next hand
+        // Persist wager for next hand
         setLastWager(wager)
-        // wagerStep is already in state, no need to persist separately
       }
 
       toast.success('Cards dealt ✅')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to deal'
-      toast.error(`Deal failed: ${message}`)
     } finally {
       setIsLoading(false)
     }
@@ -165,6 +168,8 @@ export default function PlayBetControls() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
+      {/* Tokens at Table Status - removed since chipsAtTable is shown at top of play page */}
+
       {/* Wager Control */}
       <div className="p-4 bg-neutral-900 border border-neutral-700 rounded-xl space-y-3">
         <div className="text-sm text-neutral-400 font-medium">Current Wager</div>

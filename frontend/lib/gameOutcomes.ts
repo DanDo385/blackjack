@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
 import { showWinAlert, showLossAlert, showShuffleAlert } from '@/lib/alerts'
-import { GameState, useStore } from '@/lib/store'
+import type { EngineState } from '@/lib/types'
+import { useStore } from '@/lib/store'
 import { getEngineState } from '@/lib/api'
 
 /**
@@ -25,9 +26,7 @@ export function useGameOutcomes() {
       try {
         // This would be replaced with actual API endpoint
         // For now, we'll set up a structure that can work with the backend
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE}/api/user/hands?player=${address}&limit=1`
-        )
+        const response = await fetch(`/api/user/hands?player=${address}&limit=1`)
 
         if (response.ok) {
           const data = await response.json()
@@ -96,9 +95,7 @@ export function useGameOutcomes() {
         // when the backend provides withdrawal endpoints
 
         // Placeholder: Check user summary for balance changes that might indicate cash out
-        const summaryResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE}/api/user/summary?player=${address}`
-        )
+        const summaryResponse = await fetch(`/api/user/summary?player=${address}`)
 
         if (summaryResponse.ok) {
           // This would contain balance info that could indicate cash out
@@ -116,9 +113,30 @@ export function useGameOutcomes() {
     const interval = setInterval(() => {
       checkOutcomes()
       checkCashOut()
-      getEngineState().then((state: Partial<GameState>) =>
-        useStore.setState({ ...state })
-      )
+      // Update game state from engine - only update relevant fields
+      getEngineState().then((engineState) => {
+        if (engineState) {
+          useStore.setState({
+            phase: engineState.phase,
+            phaseDetail: engineState.phaseDetail,
+            dealerHand: engineState.dealerHand,
+            playerHand: engineState.playerHand,
+            outcome: engineState.outcome,
+            payout: engineState.payout,
+            trueCount: engineState.trueCount,
+            shoePct: engineState.shoePct,
+            runningCount: engineState.runningCount,
+            cardsDealt: engineState.cardsDealt,
+            anchor: engineState.anchor,
+            spreadNum: engineState.spreadNum,
+            lastBet: engineState.lastBet,
+            growthCapBps: engineState.growthCapBps,
+            tableMin: engineState.tableMin,
+            tableMax: engineState.tableMax,
+            handId: engineState.handId,
+          })
+        }
+      })
     }, 2000)
 
     return () => clearInterval(interval)

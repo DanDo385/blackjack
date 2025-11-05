@@ -1,10 +1,9 @@
 'use client'
 import Image from 'next/image'
 import RetroScoreboard from './RetroScoreboard'
-import BetControls from './BetControls'
 import InsuranceModal from './InsuranceModal'
 import { useStore } from '@/lib/store'
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useGameOutcomes, useShuffleAlerts } from '@/lib/gameOutcomes'
 import { BetAgainHandler } from './BetAgainHandler'
 import { shouldShowCards } from '@/lib/types'
@@ -22,17 +21,9 @@ export default function TableCanvas() {
     phase,
     trueCount,
     shoePct,
-    anchor,
-    spreadNum,
-    lastBet,
-    growthCapBps,
-    tableMin,
-    tableMax,
     dealerHand,
     playerHand,
   } = useStore()
-
-  const [nextIdx, setNextIdx] = useState(0) // 0..3 for 4 card slots
 
   // Track game outcomes for win/loss alerts
   useGameOutcomes()
@@ -41,10 +32,26 @@ export default function TableCanvas() {
   // Check if cards should be visible based on phase
   const showCards = shouldShowCards(phase)
 
-  useEffect(() => {
-    const id = setInterval(() => setNextIdx((n) => (n + 1) % 4), 2.5)
-    return () => clearInterval(id)
-  }, [])
+  const dealSequence = useMemo(() => {
+    const sequence: string[] = []
+    const rounds = Math.max(playerHand.length, dealerHand.length)
+
+    for (let i = 0; i < rounds; i += 1) {
+      if (playerHand[i]) {
+        sequence.push(`player-${i}`)
+      }
+      if (dealerHand[i]) {
+        sequence.push(`dealer-${i}`)
+      }
+    }
+    return sequence
+  }, [dealerHand, playerHand])
+
+  const getDealDelay = (owner: 'dealer' | 'player', idx: number) => {
+    const key = `${owner}-${idx}`
+    const order = dealSequence.indexOf(key)
+    return order >= 0 ? order * 333 : 0
+  }
 
   const handleDeal = () => {
     // This would trigger the deal action - for now just a placeholder
@@ -56,7 +63,10 @@ export default function TableCanvas() {
     <div className="max-w-6xl mx-auto">
       <InsuranceModal />
       <BetAgainHandler onDeal={handleDeal} />
-      <RetroScoreboard trueCount={trueCount} shoePct={shoePct} />
+      <RetroScoreboard
+        trueCount={trueCount}
+        shoePct={shoePct}
+      />
 
       {/* Table felt with cards overlaid absolutely */}
       <div className="relative w-full rounded-2xl overflow-hidden border border-neutral-800">
@@ -77,7 +87,11 @@ export default function TableCanvas() {
             {dealerHand.length > 0 && (
               <div className="absolute flex gap-4" style={{ left: '50%', top: '20%', transform: 'translateX(-50%)' }}>
                 {dealerHand.map((card, idx) => (
-                  <div key={idx}>
+                  <div
+                    key={`dealer-${idx}`}
+                    className="card-deal"
+                    style={{ animationDelay: `${getDealDelay('dealer', idx)}ms` }}
+                  >
                     <Image
                       alt={`dealer card ${idx + 1}`}
                       src={card.startsWith('/cards/') ? card : `/cards/${card}`}
@@ -96,7 +110,11 @@ export default function TableCanvas() {
             {playerHand.length > 0 && (
               <div className="absolute flex gap-4" style={{ left: '50%', bottom: '25%', transform: 'translateX(-50%)' }}>
                 {playerHand.map((card, idx) => (
-                  <div key={idx}>
+                  <div
+                    key={`player-${idx}`}
+                    className="card-deal"
+                    style={{ animationDelay: `${getDealDelay('player', idx)}ms` }}
+                  >
                     <Image
                       alt={`player card ${idx + 1}`}
                       src={card.startsWith('/cards/') ? card : `/cards/${card}`}
@@ -122,12 +140,6 @@ export default function TableCanvas() {
           </div>
         )}
       </div>
-
-      <div className="mt-5">
-        <BetControls {...{ anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax }} />
-      </div>
     </div>
   )
 }
-
-

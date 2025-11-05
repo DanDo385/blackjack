@@ -13,8 +13,11 @@ export default function Account(){
   useEffect(()=>{
     if (!address) return
     getUserSummary(address)
-      .then(setData)
-      .catch(err => console.error('Failed to fetch user summary:', err))
+      .then(data => {
+        if (data) {
+          setData(data)
+        }
+      })
   },[address])
   return (
     <>

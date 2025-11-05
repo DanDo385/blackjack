@@ -87,6 +87,9 @@ export interface BetResponse {
 
 /**
  * ActionRequest represents a game action request
+ *
+ * Note: Currently unused - actions are sent via specific endpoints (hit, stand, double, split, insurance)
+ * rather than through a generic action endpoint. Kept for reference/future refactoring.
  */
 export interface ActionRequest {
   handId: number
@@ -136,6 +139,8 @@ export function shouldShowActionButtons(phase: GamePhase): boolean {
 /**
  * Helper function to check if hand is complete
  * Hand is complete when in COMPLETE phase
+ *
+ * Note: Currently unused - can be used for state validation
  */
 export function isHandComplete(phase: GamePhase): boolean {
   return phase === 'COMPLETE'
@@ -144,6 +149,8 @@ export function isHandComplete(phase: GamePhase): boolean {
 /**
  * Helper function to check if game is in progress
  * Game is in progress when not in WAITING_FOR_DEAL or COMPLETE phase
+ *
+ * Note: Currently unused - can be used for UI state management
  */
 export function isGameInProgress(phase: GamePhase): boolean {
   return phase !== 'WAITING_FOR_DEAL' && phase !== 'COMPLETE'
@@ -152,6 +159,9 @@ export function isGameInProgress(phase: GamePhase): boolean {
 /**
  * Phase transition validation
  * Returns true if the transition from 'from' to 'to' is valid
+ *
+ * Note: Currently unused - backend enforces state machine transitions.
+ * Can be used for client-side validation or debug assertions.
  */
 export function isValidTransition(from: GamePhase, to: GamePhase): boolean {
   const validTransitions: Record<GamePhase, GamePhase[]> = {

@@ -11,8 +11,11 @@ export default function Treasury(){
 
   useEffect(()=>{
     getTreasuryOverview()
-      .then(setData)
-      .catch(err => console.error('Failed to fetch treasury overview:', err))
+      .then(data => {
+        if (data) {
+          setData(data)
+        }
+      })
   },[])
 
   const positions = data?.positions || []

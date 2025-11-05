@@ -13,8 +13,8 @@ import { showTokensBroughtToTableAlert } from '@/lib/alerts'
  *
  * Flow:
  * 1. Connect wallet
- * 2. Select token to wager (ETH only for now)
- * 3. Set wager amount (5% bankroll cap enforced)
+ * 2. Select token to bring to table (defaults to ETH)
+ * 3. Set amount to bring (up to full wallet balance, no cap)
  * 4. "Bring to Table" button navigates to /play
  */
 
@@ -33,8 +33,6 @@ const TOKENS = [
 ] as const
 
 type TokenSymbol = typeof TOKENS[number]['symbol']
-
-const BANKROLL_CAP_PCT = 0.05 // 5% max per hand
 
 export default function CheckIn() {
   const router = useRouter()
@@ -83,13 +81,12 @@ export default function CheckIn() {
 
   const selectedBalance = tokenBalances[selectedToken]
 
-  // Calculate max bet based on wallet balance
-  const maxBet = useMemo(() => {
+  // Calculate max amount based on full wallet balance (no cap)
+  const maxAmount = useMemo(() => {
     const walletBalance = selectedBalance
       ? parseFloat(selectedBalance.value.toString()) / Math.pow(10, selectedBalance.decimals)
       : 0
-    const bankrollMax = Math.floor(walletBalance * BANKROLL_CAP_PCT)
-    return Math.max(bankrollMax, 1)
+    return walletBalance
   }, [selectedBalance])
 
   // Helper: Round to step
@@ -109,8 +106,8 @@ export default function CheckIn() {
       return
     }
 
-    if (wager > maxBet) {
-      toast.error(`Wager exceeds max bet of ${maxBet.toFixed(6)} ${selectedToken}`)
+    if (wager > maxAmount) {
+      toast.error(`Amount exceeds wallet balance of ${maxAmount.toFixed(6)} ${selectedToken}`)
       return
     }
 
@@ -118,7 +115,7 @@ export default function CheckIn() {
 
     try {
       // Update store with chips at table
-      setChipsAtTable(wager, selectedToken)
+      setChipsAtTable(wager)
       setLastWager(wager)
 
       // Show success alert
@@ -283,7 +280,7 @@ export default function CheckIn() {
                     value={String(wager)}
                     onChange={(e) => {
                       const v = Number(e.target.value.replace(/[^0-9.]/g, ''))
-                      setWager(Number.isFinite(v) ? Math.min(v, maxBet) : 0)
+                      setWager(Number.isFinite(v) ? Math.min(v, maxAmount) : 0)
                     }}
                     disabled={isLoading}
                   />
@@ -293,7 +290,7 @@ export default function CheckIn() {
                     type="button"
                     aria-label="increase wager"
                     className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50"
-                    onClick={() => setWager(Math.min(roundToStep(wager + wagerStep, wagerStep), maxBet))}
+                    onClick={() => setWager(Math.min(roundToStep(wager + wagerStep, wagerStep), maxAmount))}
                     disabled={isLoading}
                   >
                     +
@@ -317,23 +314,23 @@ export default function CheckIn() {
                 />
               </div>
 
-              {/* Max bet info */}
+              {/* Wallet balance info */}
               <div className="text-xs space-y-1 pt-3 border-t border-neutral-700">
                 <div className="flex justify-between text-neutral-400">
-                  <span>Max per hand (5% cap)</span>
+                  <span>Wallet Balance</span>
                   <span className="font-mono text-white">
-                    {maxBet.toFixed(6)} {selectedToken}
+                    {maxAmount.toFixed(6)} {selectedToken}
                   </span>
                 </div>
-                {wager > maxBet && (
-                  <div className="text-red-400">⚠️ Wager exceeds maximum</div>
+                {wager > maxAmount && (
+                  <div className="text-red-400">⚠️ Amount exceeds wallet balance</div>
                 )}
               </div>
 
               {/* Bring to Table Button */}
               <button
                 type="button"
-                disabled={!isConnected || !wager || wager <= 0 || wager > maxBet || isLoading}
+                disabled={!isConnected || !wager || wager <= 0 || wager > maxAmount || isLoading}
                 onClick={handleBringToTable}
                 className="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-semibold transition"
               >

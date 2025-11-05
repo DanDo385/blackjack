@@ -28,7 +28,7 @@ type HandResult struct {
 
 // Deck represents a shuffled deck of cards
 type Deck struct {
-	cards []Card
+	Cards []Card // Exported for testing and analysis
 	index int
 }
 
@@ -46,7 +46,7 @@ func NewDeck(numDecks int) *Deck {
 		}
 	}
 
-	return &Deck{cards: cards, index: 0}
+	return &Deck{Cards: cards, index: 0}
 }
 
 // Shuffle deterministically shuffles the deck using a seed
@@ -56,9 +56,9 @@ func (d *Deck) Shuffle(seed []byte) {
 	rng := newSeedRNG(seed)
 
 	// Fisher-Yates shuffle
-	for i := len(d.cards) - 1; i > 0; i-- {
+	for i := len(d.Cards) - 1; i > 0; i-- {
 		j := rng.NextInt(i + 1)
-		d.cards[i], d.cards[j] = d.cards[j], d.cards[i]
+		d.Cards[i], d.Cards[j] = d.Cards[j], d.Cards[i]
 	}
 
 	d.index = 0
@@ -66,11 +66,11 @@ func (d *Deck) Shuffle(seed []byte) {
 
 // Deal deals the next card from the deck
 func (d *Deck) Deal() Card {
-	if d.index >= len(d.cards) {
+	if d.index >= len(d.Cards) {
 		// Deck exhausted - in production, trigger reshuffle
 		panic("deck exhausted")
 	}
-	card := d.cards[d.index]
+	card := d.Cards[d.index]
 	d.index++
 	return card
 }

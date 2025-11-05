@@ -6,6 +6,7 @@ import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { Toaster } from 'react-hot-toast'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
+import { GameOutcomesListener } from './GameOutcomesListener'
 import '@rainbow-me/rainbowkit/styles.css'
 
 /**
@@ -45,6 +46,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={qc}>
         <RainbowKitProvider>
+          {/* Game outcome detection and alerts */}
+          <GameOutcomesListener />
+
           {children}
           <Toaster position="top-right" />
         </RainbowKitProvider>
