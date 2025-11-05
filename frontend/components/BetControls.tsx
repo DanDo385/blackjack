@@ -1,53 +1,30 @@
 'use client'
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { useAccount, useBalance } from 'wagmi'
-import { showTokensBroughtToTableAlert } from '@/lib/alerts'
+import { useAccount } from 'wagmi'
 import { useStore } from '@/lib/store'
 import { placeBet, playerHit, playerStand, playerDouble, playerSplit } from '@/lib/api'
 import { shouldShowActionButtons, shouldShowDealButton } from '@/lib/types'
 import ReDealPrompt from './ReDealPrompt'
 
 /**
- * BetControls Component - UNIFIED Betting & Game Actions
+ * BetControls Component - Game Actions & Betting Controls
  *
- * This consolidated component handles ALL betting and game action phases:
+ * This component handles game actions and betting controls AFTER chips are at the table.
+ * Token selection and check-in is handled on the /checkin page.
  *
- * PHASE 1: Betting Interface (before chips at table)
- * - Multi-token wallet support (USDC, ETH, wETH, wBTC, USDT)
- * - 5% bankroll cap enforcement
- * - Game rules enforcement (min/max, growth cap)
- * - "Bring to Table" button commits chips
- *
- * PHASE 2: Deal & Play (after chips at table)
- * - Deal button (when phase allows dealing)
+ * Features:
+ * - Deal button (always visible, disabled when appropriate)
  * - Hit/Stand/Double/Split buttons (during PLAYER_TURN phase)
  * - Cash Out button (always available)
  * - Wager control between hands
  * - Re-deal prompt handling
  *
- * Rules:
- * - Max bet = min(wallet * 5%, game max, growth cap)
- * - Min bet = max(table min, anchor / spread)
- * - Growth cap: max increase vs last bet
+ * Note: When chipsAtTable is 0 or missing, this component returns null.
+ * The /play page shows a Check In button instead.
  */
 
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006' as const
-const WBTC_ADDRESS = '0x053ba9b206e4fb2d196a13f7b5b0a186c0469605' as const
-const USDT_ADDRESS = '0xfde4c96c1286fba3ac151be17a5c5f2db85cbe72' as const
-
-const TOKENS = [
-  { symbol: 'USDC', address: USDC_ADDRESS, decimals: 6 },
-  { symbol: 'ETH', address: undefined, decimals: 18 },
-  { symbol: 'wETH', address: WETH_ADDRESS, decimals: 18 },
-  { symbol: 'wBTC', address: WBTC_ADDRESS, decimals: 8 },
-  { symbol: 'USDT', address: USDT_ADDRESS, decimals: 6 },
-] as const
-
-type TokenSymbol = typeof TOKENS[number]['symbol']
-
-const BANKROLL_CAP_PCT = 0.05 // 5% max per hand
+// Token selection and check-in are now handled on /checkin page only
 
 interface BetControlsProps {
   anchor?: number
@@ -68,7 +45,6 @@ export default function BetControls({
 }: BetControlsProps) {
   const [mounted, setMounted] = useState(false)
   const { address, isConnected } = useAccount()
-  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('USDC')
   const [isLoading, setIsLoading] = useState(false)
 
   const {
@@ -76,6 +52,7 @@ export default function BetControls({
     phaseDetail,
     chipsAtTable,
     tokenInPlay,
+    selectedToken,
     handDealt,
     handId,
     playerHand,
@@ -105,60 +82,24 @@ export default function BetControls({
     setMounted(true)
   }, [])
 
-  // Fetch balances for all tokens
-  const { data: usdcBalance } = useBalance({
-    address,
-    token: USDC_ADDRESS,
-  })
-  const { data: ethBalance } = useBalance({
-    address,
-  })
-  const { data: wethBalance } = useBalance({
-    address,
-    token: WETH_ADDRESS,
-  })
-  const { data: wbtcBalance } = useBalance({
-    address,
-    token: WBTC_ADDRESS,
-  })
-  const { data: usdtBalance } = useBalance({
-    address,
-    token: USDT_ADDRESS,
-  })
-
-  const tokenBalances = useMemo(
-    () => ({
-      USDC: usdcBalance,
-      ETH: ethBalance,
-      wETH: wethBalance,
-      wBTC: wbtcBalance,
-      USDT: usdtBalance,
-    }),
-    [usdcBalance, ethBalance, wethBalance, wbtcBalance, usdtBalance]
-  )
-
-  const selectedBalance = tokenBalances[selectedToken]
-
-  // Calculate max bet based on rules
-  const maxBetByRules = useMemo(() => {
-    const baseMin = Math.max(anchor / spreadNum, tableMin)
-    const baseMax = Math.min(anchor * spreadNum, tableMax)
-    const growthMax = lastBet ? lastBet * (1 + growthCapBps / 10000) : baseMax
-    const gameMax = Math.min(baseMax, growthMax)
-
-    const walletBalance = selectedBalance
-      ? parseFloat(selectedBalance.value.toString()) / Math.pow(10, selectedBalance.decimals)
-      : 0
-    const bankrollMax = Math.floor(walletBalance * BANKROLL_CAP_PCT)
-
-    return {
-      baseMin: Math.max(baseMin, 1),
-      gameMax,
-      bankrollMax,
-      effective: Math.min(gameMax, bankrollMax),
-      walletBalance,
+  // Initialize wager to 10% of chipsAtTable on first visit when chipsAtTable is set
+  // Only initialize if wager is 0 or greater than chipsAtTable (stale value)
+  // and we're not in an active hand
+  useEffect(() => {
+    if (
+      chipsAtTable > 0 &&
+      (wager === 0 || wager > chipsAtTable) &&
+      (phase === 'WAITING_FOR_DEAL' || phase === 'COMPLETE')
+    ) {
+      const defaultWager = Math.ceil(chipsAtTable * 0.10)
+      if (defaultWager > 0 && defaultWager <= chipsAtTable) {
+        setWager(defaultWager)
+      }
     }
-  }, [anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax, selectedBalance])
+  }, [chipsAtTable, wager, phase, setWager])
+
+  // Token selection is now handled on /checkin page only
+  // Use selectedToken from store (set during check-in)
 
   // Helper: Round to step
   const roundToStep = (value: number, stepVal: number) => {
@@ -174,50 +115,6 @@ export default function BetControls({
     },
     [chipsAtTable, setWager]
   )
-
-  // ========================================================================
-  // PHASE 1: Bring to Table Handler
-  // ========================================================================
-  const handleBringToTable = async () => {
-    if (!isConnected) {
-      toast.error('Please connect your wallet first')
-      return
-    }
-
-    if (wager <= 0) {
-      toast.error('Please enter a valid wager amount')
-      return
-    }
-
-    setIsLoading(true)
-
-    try {
-      // Update store with chips at table
-      setChipsAtTable(wager)
-
-      // Update token in play via game state
-      setGameState({
-        playerHand: [],
-        dealerHand: [],
-      })
-
-      // Persist lastWager for next deal
-      setLastWager(wager)
-
-      // Show success alert
-      showTokensBroughtToTableAlert({
-        amount: wager,
-        token: selectedToken,
-      })
-
-      toast.success('Chips brought to table ✅')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to bring chips'
-      toast.error(`Failed: ${message}`)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   // ========================================================================
   // PHASE 2: Deal Handler - Starts a new hand with animated card dealing
@@ -253,7 +150,7 @@ export default function BetControls({
     try {
       const response = await placeBet({
         amount: wager,
-        token: selectedToken,
+        token: selectedToken || tokenInPlay || 'ETH',
       })
 
       if (!response) {
@@ -262,73 +159,101 @@ export default function BetControls({
       }
 
       if (response.handId) {
+        // Deduct wager from chipsAtTable after successful deal
+        setChipsAtTable(chipsAtTable - wager)
         // Animate card dealing: show cards one at a time with 3.33 second delays
         const CARD_DEAL_DELAY = 3333 // 3.33 seconds in milliseconds
 
-        // Start with empty hands
-        setGameState({
-          dealerHand: [],
-          playerHand: [],
-          handId: response.handId,
-          phase: response.phase,
-          phaseDetail: 'Dealing cards...',
-        })
+        // Check if hand was auto-resolved (blackjack detected)
+        const isAutoResolved = response.phase === 'RESOLUTION' || response.phase === 'COMPLETE'
 
-        // Wait a moment before starting the deal animation
-        await new Promise(resolve => setTimeout(resolve, 500))
+        if (isAutoResolved) {
+          // Blackjack detected - show both cards immediately and resolve
+          setGameState({
+            dealerHand: response.dealerHand || [],
+            playerHand: response.playerHand || [],
+            handId: response.handId,
+            phase: response.phase,
+            phaseDetail: response.phaseDetail,
+          })
 
-        // Deal Dealer's first card (face down - back.png)
-        setGameState({
-          dealerHand: ['/cards/back.png'],
-          playerHand: [],
-          handId: response.handId,
-          phase: response.phase,
-          phaseDetail: 'Dealing cards...',
-        })
+          // Auto-handle the outcome
+          if (response.phase === 'RESOLUTION' || response.phase === 'COMPLETE') {
+            // Wait a moment then show the resolved message
+            await new Promise(resolve => setTimeout(resolve, 2000))
 
-        // Wait before dealing Player's first card
-        await new Promise(resolve => setTimeout(resolve, CARD_DEAL_DELAY))
+            // Automatically end the hand and show the re-deal prompt
+            // The outcome calculation is done by the backend
+            endHand()
+            toast.success('Blackjack! Hand automatically resolved ✅')
+          }
+        } else {
+          // Normal deal animation
+          // Start with empty hands
+          setGameState({
+            dealerHand: [],
+            playerHand: [],
+            handId: response.handId,
+            phase: response.phase,
+            phaseDetail: 'Dealing cards...',
+          })
 
-        // Deal Player's first card
-        setGameState({
-          dealerHand: ['/cards/back.png'],
-          playerHand: response.playerHand?.slice(0, 1) || [],
-          handId: response.handId,
-          phase: response.phase,
-          phaseDetail: 'Dealing cards...',
-        })
+          // Wait a moment before starting the deal animation
+          await new Promise(resolve => setTimeout(resolve, 500))
 
-        // Wait before dealing Dealer's second card
-        await new Promise(resolve => setTimeout(resolve, CARD_DEAL_DELAY))
+          // Deal Dealer's first card (face down - back.png)
+          setGameState({
+            dealerHand: ['/cards/back.png'],
+            playerHand: [],
+            handId: response.handId,
+            phase: response.phase,
+            phaseDetail: 'Dealing cards...',
+          })
 
-        // Deal Dealer's second card (face down - back.png)
-        setGameState({
-          dealerHand: ['/cards/back.png', '/cards/back.png'],
-          playerHand: response.playerHand?.slice(0, 1) || [],
-          handId: response.handId,
-          phase: response.phase,
-          phaseDetail: 'Dealing cards...',
-        })
+          // Wait before dealing Player's first card
+          await new Promise(resolve => setTimeout(resolve, CARD_DEAL_DELAY))
 
-        // Wait before dealing Player's second card
-        await new Promise(resolve => setTimeout(resolve, CARD_DEAL_DELAY))
+          // Deal Player's first card
+          setGameState({
+            dealerHand: ['/cards/back.png'],
+            playerHand: response.playerHand?.slice(0, 1) || [],
+            handId: response.handId,
+            phase: response.phase,
+            phaseDetail: 'Dealing cards...',
+          })
 
-        // Deal Player's second card and complete the deal
-        setGameState({
-          dealerHand: ['/cards/back.png', '/cards/back.png'],
-          playerHand: response.playerHand || [],
-          handId: response.handId,
-          phase: response.phase,
-          phaseDetail: response.phaseDetail,
-        })
+          // Wait before dealing Dealer's second card
+          await new Promise(resolve => setTimeout(resolve, CARD_DEAL_DELAY))
+
+          // Deal Dealer's second card (face down - back.png)
+          setGameState({
+            dealerHand: ['/cards/back.png', '/cards/back.png'],
+            playerHand: response.playerHand?.slice(0, 1) || [],
+            handId: response.handId,
+            phase: response.phase,
+            phaseDetail: 'Dealing cards...',
+          })
+
+          // Wait before dealing Player's second card
+          await new Promise(resolve => setTimeout(resolve, CARD_DEAL_DELAY))
+
+          // Deal Player's second card and complete the deal
+          setGameState({
+            dealerHand: ['/cards/back.png', '/cards/back.png'],
+            playerHand: response.playerHand || [],
+            handId: response.handId,
+            phase: response.phase,
+            phaseDetail: response.phaseDetail,
+          })
+
+          toast.success('Cards dealt ✅')
+        }
 
         // Update lastBet for betting limits
         setBettingParams({ lastBet: wager })
 
         // Persist wager for next hand
         setLastWager(wager)
-
-        toast.success('Cards dealt ✅')
       } else {
         toast.error('Deal failed: Invalid response from server')
       }
@@ -532,13 +457,15 @@ export default function BetControls({
   // ========================================================================
   // PHASE 2: Game in progress - show action buttons
   // ========================================================================
+  // Only render when chipsAtTable exists and is > 0
+  // When chipsAtTable is 0, the /play page shows a Check In button instead
   if (chipsAtTable && chipsAtTable > 0) {
     return (
       <>
         <ReDealPrompt
           isOpen={showReDealPrompt}
           lastWager={lastWager}
-          token={selectedToken}
+          token={selectedToken || tokenInPlay || 'ETH'}
           onAccept={handleReDeal}
           onDecline={handleDeclineReDeal}
         />
@@ -606,17 +533,22 @@ export default function BetControls({
             </div>
           )}
 
-          {/* Deal Button - Only show when phase allows */}
-          {canDeal && (
-            <button
-              type="button"
-              disabled={!isConnected || wager <= 0 || wager > chipsAtTable || isLoading}
-              onClick={handleDeal}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white px-6 py-4 rounded-lg font-bold text-lg transition"
-            >
-              {isLoading ? '⏳ Dealing…' : '🃏 Deal'}
-            </button>
-          )}
+          {/* Deal Button - Always visible, disabled when appropriate */}
+          <button
+            type="button"
+            disabled={
+              !isConnected ||
+              chipsAtTable <= 0 ||
+              wager <= 0 ||
+              wager > chipsAtTable ||
+              !canDeal ||
+              isLoading
+            }
+            onClick={handleDeal}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white px-6 py-4 rounded-lg font-bold text-lg transition"
+          >
+            {isLoading ? '⏳ Dealing…' : '🃏 Deal'}
+          </button>
 
           {/* Game In Progress Message */}
           {!canDeal && (
@@ -694,159 +626,10 @@ export default function BetControls({
   }
 
   // ========================================================================
-  // PHASE 1: Show betting interface - no chips at table yet
+  // PHASE 1: No chips at table - Check In handled on /play page
   // ========================================================================
-
-  if (!isConnected) {
-    return (
-      <div className="space-y-4">
-        <div className="p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-sm text-amber-100">
-          ⚠️ Connect your wallet to place bets
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      <ReDealPrompt
-        isOpen={showReDealPrompt}
-        lastWager={lastWager}
-        token={selectedToken}
-        onAccept={handleReDeal}
-        onDecline={handleDeclineReDeal}
-      />
-
-      <div className="space-y-4">
-        {/* Wager Controls Row */}
-        <div className="flex items-center gap-3 p-3 bg-neutral-900 border border-neutral-700 rounded-lg flex-wrap">
-          <span className="text-sm text-neutral-400 font-medium">Wager</span>
-
-          <button
-            type="button"
-            aria-label="decrease wager"
-            className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50"
-            onClick={() => setWager(Math.max(0, roundToStep(wager - wagerStep, wagerStep)))}
-            disabled={isLoading}
-          >
-            –
-          </button>
-
-          <input
-            type="number"
-            inputMode="decimal"
-            className="w-28 px-3 py-2 rounded-xl bg-black border border-neutral-600 text-white font-mono focus:border-neutral-400 transition disabled:opacity-50"
-            value={String(wager)}
-            onChange={(e) => {
-              const v = Number(e.target.value.replace(/[^0-9.]/g, ''))
-              setWager(Number.isFinite(v) ? v : 0)
-            }}
-            disabled={isLoading}
-          />
-
-          <button
-            type="button"
-            aria-label="increase wager"
-            className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold transition disabled:opacity-50"
-            onClick={() => setWager(roundToStep(wager + wagerStep, wagerStep))}
-            disabled={isLoading}
-          >
-            +
-          </button>
-
-          <div className="flex items-center gap-2 ml-2">
-            <span className="text-sm text-neutral-400">Step</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              className="w-20 px-3 py-2 rounded-xl bg-black border border-neutral-600 text-white font-mono focus:border-neutral-400 transition disabled:opacity-50"
-              value={String(wagerStep)}
-              onChange={(e) => {
-                const s = Number(e.target.value.replace(/[^0-9.]/g, '')) || 1
-                setWagerStep(Math.max(0.0001, s))
-              }}
-              title="Increment for +/- buttons"
-              disabled={isLoading}
-            />
-          </div>
-
-          <button
-            type="button"
-            className="ml-auto bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:opacity-50 text-white px-6 py-2 rounded-2xl font-semibold transition"
-            disabled={!wager || wager <= 0 || isLoading}
-            onClick={handleBringToTable}
-          >
-            {isLoading ? 'Processing…' : 'Bring to Table'}
-          </button>
-        </div>
-
-        {/* Multi-token balance display */}
-        <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg text-sm space-y-2">
-          <div className="font-semibold text-neutral-300 mb-2">Your Balances</div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-neutral-400">ETH</span>
-              <span className="font-mono text-white">
-                {(ethBalance ? parseFloat(ethBalance.value.toString()) / Math.pow(10, ethBalance.decimals) : 0).toFixed(4)}{' '}
-                ETH
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">wETH</span>
-              <span className="font-mono text-white">
-                {(wethBalance ? parseFloat(wethBalance.value.toString()) / Math.pow(10, wethBalance.decimals) : 0).toFixed(4)}{' '}
-                wETH
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">wBTC</span>
-              <span className="font-mono text-white">
-                {(wbtcBalance ? parseFloat(wbtcBalance.value.toString()) / Math.pow(10, wbtcBalance.decimals) : 0).toFixed(6)}{' '}
-                wBTC
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">USDC</span>
-              <span className="font-mono text-white">
-                {(usdcBalance ? parseFloat(usdcBalance.value.toString()) / Math.pow(10, usdcBalance.decimals) : 0).toFixed(2)}{' '}
-                USDC
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-400">USDT</span>
-              <span className="font-mono text-white">
-                {(usdtBalance ? parseFloat(usdtBalance.value.toString()) / Math.pow(10, usdtBalance.decimals) : 0).toFixed(2)}{' '}
-                USDT
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Wager token selector and max bet info */}
-        <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg space-y-2">
-          <label className="text-sm font-medium text-white block">Wager Token</label>
-          <select
-            value={selectedToken}
-            onChange={(e) => setSelectedToken(e.target.value as TokenSymbol)}
-            className="w-full border border-neutral-600 bg-black text-white rounded-lg px-3 py-2 text-sm font-medium focus:border-neutral-400 transition"
-          >
-            {TOKENS.map((token) => (
-              <option key={token.symbol} value={token.symbol}>
-                {token.symbol}
-              </option>
-            ))}
-          </select>
-
-          <div className="text-xs space-y-1 pt-2 border-t border-neutral-700">
-            <div className="flex justify-between text-neutral-400">
-              <span>Max per hand (5% cap)</span>
-              <span className="font-mono text-white">
-                {maxBetByRules.bankrollMax.toFixed(6)} {selectedToken}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  )
+  // When chipsAtTable is 0 or missing, the /play page shows a Check In button
+  // BetControls should not render the mini check-in form anymore
+  // Return null to let /play page handle the Check In UI
+  return null
 }
