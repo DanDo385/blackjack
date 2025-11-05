@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { GamePhase, GameOutcome } from './types'
 
 /**
  * Game state store using Zustand
@@ -7,8 +8,13 @@ import { create } from 'zustand'
  * - Game metrics: trueCount, shoePct (shoe percentage dealt)
  * - Betting parameters: anchor, spreadNum, lastBet, growthCapBps, tableMin, tableMax
  * - Raw card counting: cardsDealt, runningCount (for computing true count)
+ * - Phase tracking: current game phase (WAITING_FOR_DEAL, SHUFFLING, etc.)
  */
 export type GameState = {
+  // Phase tracking (new state machine)
+  phase: GamePhase
+  phaseDetail: string
+
   // Display metrics
   trueCount: number
   shoePct: number
@@ -42,6 +48,10 @@ export type GameState = {
   showReDealPrompt: boolean // Show re-deal prompt after hand ends
   handDealt: boolean // Whether cards have been dealt
 
+  // Outcome
+  outcome: GameOutcome
+  payout: string
+
   // Actions
   newShoe: () => void
   resetCounting: () => void
@@ -57,6 +67,10 @@ export type GameState = {
 }
 
 const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInPlay' | 'cashOut' | 'setGameState' | 'setWager' | 'setWagerStep' | 'setLastWager' | 'endHand' | 'closeReDealPrompt' | 'resetHand'> = {
+  // Phase tracking
+  phase: 'WAITING_FOR_DEAL',
+  phaseDetail: 'Waiting for player to place bet and deal',
+
   // Start with 0% shoe dealt, 0 true count
   trueCount: 0,
   shoePct: 0,
@@ -89,6 +103,10 @@ const INITIAL_STATE: Omit<GameState, 'newShoe' | 'resetCounting' | 'setTokensInP
   handId: null,
   showReDealPrompt: false,
   handDealt: false,
+
+  // Outcome
+  outcome: '',
+  payout: '0',
 }
 
 export const useStore = create<GameState>((set, get) => {

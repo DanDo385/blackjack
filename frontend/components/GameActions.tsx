@@ -3,46 +3,49 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useStore } from '@/lib/store'
-import { postJSON } from '@/lib/api'
+import { playerHit, playerStand, playerDouble, playerSplit } from '@/lib/api'
+import { shouldShowActionButtons } from '@/lib/types'
 
 /**
  * GameActions Component
  *
- * Displays blackjack action buttons after tokens are brought to table
- * Color-coded: Teal (Deal), Green (Hit), Red (Stand), Yellow (Split), Purple (Double), Gray (Cash Out)
+ * Displays blackjack action buttons based on game phase
+ * Only shows action buttons when phase is PLAYER_TURN
+ * Color-coded: Green (Hit), Red (Stand), Yellow (Split), Purple (Double), Gray (Cash Out)
  */
 export default function GameActions() {
   const router = useRouter()
-  const { 
-    tokensInPlay, 
-    tokenInPlay, 
-    handId, 
+  const {
+    phase,
+    tokensInPlay,
+    tokenInPlay,
+    handId,
     handDealt,
     dealerHand,
     playerHand,
-    cashOut, 
+    cashOut,
     endHand,
     setGameState,
     resetHand
   } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
 
-  const handleAction = async (action: string) => {
+  // Check if action buttons should be shown based on phase
+  const canShowActions = shouldShowActionButtons(phase)
+
+  const handleHit = async () => {
     if (!handId) {
       toast.error('No active hand')
       return
     }
 
-    setLoading(action)
+    setLoading('hit')
     try {
-      const response: any = await postJSON(`/api/game/${action}`, {
-        handId,
-        action,
-      })
-      
+      const response = await playerHit(handId)
+
       // Update game state with response
       if (response.dealerHand && response.playerHand) {
-        useStore.getState().setGameState(
+        setGameState(
           response.dealerHand,
           response.playerHand,
           response.handId
@@ -53,46 +56,114 @@ export default function GameActions() {
         toast.success(response.message)
       }
 
-      // Check if hand is complete (Stand action)
-      if (action === 'stand') {
-        // End hand and show re-deal prompt
+      // Check if hand is complete
+      if (response.phase === 'COMPLETE') {
         endHand()
+        if (response.outcome) {
+          toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Action failed'
-      toast.error(`Failed to ${action}: ${message}`)
+      toast.error(`Failed to hit: ${message}`)
     } finally {
       setLoading(null)
     }
   }
 
-  const handleDeal = async () => {
-    setLoading('deal')
-    try {
-      // Call backend to deal hand
-      const response = await postJSON<{
-        handId?: number
-        dealerHand?: string[]
-        playerHand?: string[]
-        message?: string
-      }>('/api/engine/bet', {
-        amount: tokensInPlay,
-        token: tokenInPlay,
-      })
+  const handleStand = async () => {
+    if (!handId) {
+      toast.error('No active hand')
+      return
+    }
 
-      // Start game by dealing cards
-      if (response.handId) {
+    setLoading('stand')
+    try {
+      const response = await playerStand(handId)
+
+      // Update game state with response
+      if (response.dealerHand && response.playerHand) {
         setGameState(
-          response.dealerHand || [],
-          response.playerHand || [],
+          response.dealerHand,
+          response.playerHand,
           response.handId
         )
       }
 
-      toast.success('Cards dealt ✅')
+      // Show outcome
+      if (response.outcome) {
+        toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
+      }
+
+      // End hand and show re-deal prompt
+      endHand()
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to deal'
-      toast.error(`Deal failed: ${message}`)
+      const message = error instanceof Error ? error.message : 'Action failed'
+      toast.error(`Failed to stand: ${message}`)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleSplit = async () => {
+    if (!handId) {
+      toast.error('No active hand')
+      return
+    }
+
+    setLoading('split')
+    try {
+      const response = await playerSplit(handId)
+
+      // Update game state with response
+      if (response.dealerHand && response.playerHand) {
+        setGameState(
+          response.dealerHand,
+          response.playerHand,
+          response.handId
+        )
+      }
+
+      if (response.message) {
+        toast.success(response.message)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Action failed'
+      toast.error(`Failed to split: ${message}`)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleDouble = async () => {
+    if (!handId) {
+      toast.error('No active hand')
+      return
+    }
+
+    setLoading('double')
+    try {
+      const response = await playerDouble(handId)
+
+      // Update game state with response
+      if (response.dealerHand && response.playerHand) {
+        setGameState(
+          response.dealerHand,
+          response.playerHand,
+          response.handId
+        )
+      }
+
+      // Show outcome
+      if (response.outcome) {
+        toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
+      }
+
+      // End hand after double (automatic stand)
+      endHand()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Action failed'
+      toast.error(`Failed to double: ${message}`)
     } finally {
       setLoading(null)
     }
@@ -101,10 +172,12 @@ export default function GameActions() {
   const handleCashOut = async () => {
     setLoading('cashout')
     try {
-      await postJSON('/api/game/cashout', {
-        handId,
+      await fetch('/api/game/cashout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handId }),
       })
-      
+
       cashOut()
       toast.success('Tokens cashed out successfully')
       router.push('/')
@@ -117,44 +190,28 @@ export default function GameActions() {
   }
 
   // Helper to determine if action is available
-  const canHit = handDealt && !loading
-  const canStand = handDealt && !loading
-  const canSplit = handDealt && playerHand.length === 2 && !loading // Only on initial deal
-  const canDouble = handDealt && playerHand.length === 2 && !loading // Only on initial deal
-  const canDeal = !handDealt && !loading
+  const canHit = canShowActions && !loading
+  const canStand = canShowActions && !loading
+  const canSplit = canShowActions && playerHand.length === 2 && !loading // Only on initial deal
+  const canDouble = canShowActions && playerHand.length === 2 && !loading // Only on initial deal
   const canCashOut = !loading
+
+  // Don't render anything if not at table
+  if (!tokensInPlay || tokensInPlay <= 0) {
+    return null
+  }
 
   return (
     <div className="space-y-4">
-      {/* Tokens at table display */}
-      <div className="p-4 bg-green-900/30 border border-green-600 rounded-lg">
-        <div className="text-sm text-green-100 font-semibold">
-          Tokens at table: {tokensInPlay.toFixed(6)} {tokenInPlay}
-        </div>
-      </div>
-
-      {/* Deal button - appears when no hand is dealt */}
-      {!handDealt && (
-        <div className="flex justify-center mb-4">
-          <button
-            onClick={handleDeal}
-            disabled={!canDeal}
-            className="bg-teal-500 hover:bg-teal-600 disabled:bg-teal-700 disabled:opacity-50 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all transform hover:scale-105"
-          >
-            {loading === 'deal' ? 'Dealing...' : 'Deal'}
-          </button>
-        </div>
-      )}
-
-      {/* Game action buttons - appear after cards are dealt */}
-      {handDealt && (
+      {/* Game action buttons - only show when phase is PLAYER_TURN */}
+      {canShowActions && (
         <div className="flex flex-wrap gap-4 justify-center">
           <button
-            onClick={() => handleAction('hit')}
+            onClick={handleHit}
             disabled={!canHit}
             className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
-              canHit 
-                ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105' 
+              canHit
+                ? 'bg-green-500 hover:bg-green-600 text-white transform hover:scale-105'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
@@ -162,11 +219,11 @@ export default function GameActions() {
           </button>
 
           <button
-            onClick={() => handleAction('stand')}
+            onClick={handleStand}
             disabled={!canStand}
             className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
-              canStand 
-                ? 'bg-red-500 hover:bg-red-600 text-white transform hover:scale-105' 
+              canStand
+                ? 'bg-red-500 hover:bg-red-600 text-white transform hover:scale-105'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
@@ -174,11 +231,11 @@ export default function GameActions() {
           </button>
 
           <button
-            onClick={() => handleAction('split')}
+            onClick={handleSplit}
             disabled={!canSplit}
             className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
-              canSplit 
-                ? 'bg-yellow-400 hover:bg-yellow-500 text-white transform hover:scale-105' 
+              canSplit
+                ? 'bg-yellow-400 hover:bg-yellow-500 text-white transform hover:scale-105'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
@@ -186,11 +243,11 @@ export default function GameActions() {
           </button>
 
           <button
-            onClick={() => handleAction('double')}
+            onClick={handleDouble}
             disabled={!canDouble}
             className={`px-6 py-3 rounded-2xl font-semibold transition-all ${
-              canDouble 
-                ? 'bg-purple-500 hover:bg-purple-600 text-white transform hover:scale-105' 
+              canDouble
+                ? 'bg-purple-500 hover:bg-purple-600 text-white transform hover:scale-105'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

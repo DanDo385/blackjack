@@ -1,4 +1,5 @@
 import type { GameState } from '@/lib/store'
+import type { EngineState, BetRequest, BetResponse, ActionRequest, ActionResponse } from '@/lib/types'
 
 /**
  * API client with error handling
@@ -111,33 +112,77 @@ export async function putJSON<T>(path: string, body: any): Promise<T> {
  * Get current engine state
  * Falls back to default state if API is unavailable
  */
-export async function getEngineState(): Promise<Partial<GameState>> {
+export async function getEngineState(): Promise<Partial<EngineState>> {
   try {
-    return await getJSON<Partial<GameState>>('/api/engine/state')
+    return await getJSON<EngineState>('/api/engine/state')
   } catch (error) {
     console.warn('Engine state unavailable, using defaults:', error)
     // Return sensible defaults when backend is down
     return {
+      phase: 'WAITING_FOR_DEAL',
+      phaseDetail: 'Waiting for player to place bet and deal',
+      handId: 0,
+      deckInitialized: false,
+      cardsDealt: 0,
+      totalCards: 0,
+      dealerHand: [],
+      playerHand: [],
+      outcome: '',
+      payout: '0',
       trueCount: 0,
       shoePct: 0,
+      runningCount: 0,
       anchor: 100,
       spreadNum: 4,
       lastBet: 0,
       growthCapBps: 3300,
       tableMin: 5,
       tableMax: 5000,
-      cardsDealt: 0,
-      runningCount: 0,
-      decks: 7,
+      lastUpdated: Date.now() / 1000,
     }
   }
 }
 
 /**
- * Place a bet
+ * Place a bet and deal cards
  */
-export async function placeBet(amount: number) {
-  return postJSON('/api/engine/bet', { amount })
+export async function placeBet(request: BetRequest): Promise<BetResponse> {
+  return postJSON<BetResponse>('/api/engine/bet', request)
+}
+
+/**
+ * Player hits (requests another card)
+ */
+export async function playerHit(handId: number): Promise<ActionResponse> {
+  return postJSON<ActionResponse>('/api/game/hit', { handId })
+}
+
+/**
+ * Player stands (ends their turn)
+ */
+export async function playerStand(handId: number): Promise<ActionResponse> {
+  return postJSON<ActionResponse>('/api/game/stand', { handId })
+}
+
+/**
+ * Player doubles down
+ */
+export async function playerDouble(handId: number): Promise<ActionResponse> {
+  return postJSON<ActionResponse>('/api/game/double', { handId })
+}
+
+/**
+ * Player splits their hand
+ */
+export async function playerSplit(handId: number): Promise<ActionResponse> {
+  return postJSON<ActionResponse>('/api/game/split', { handId })
+}
+
+/**
+ * Player buys/declines insurance
+ */
+export async function playerInsurance(handId: number, buyInsurance: boolean): Promise<ActionResponse> {
+  return postJSON<ActionResponse>('/api/game/insurance', { handId, buyInsurance })
 }
 
 /**
