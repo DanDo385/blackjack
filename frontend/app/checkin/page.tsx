@@ -1,6 +1,6 @@
 'use client'
-import Navbar from '@/components/Navbar'
-import { AlertBus } from '@/components/AlertBus'
+import Navbar from '@/components/layout/Navbar'
+import { AlertBus } from '@/components/alerts/AlertBus'
 import { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { useAccount, useBalance } from 'wagmi'
@@ -44,11 +44,7 @@ export default function CheckIn() {
   const [wagerStep, setWagerStep] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
 
-<<<<<<< HEAD
   const { setChipsAtTable, setLastWager, setGameState } = useStore()
-=======
-  const { setTokensInPlay, setLastWager, setChipsAtTable, setGameState } = useStore()
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -120,14 +116,8 @@ export default function CheckIn() {
     setIsLoading(true)
 
     try {
-<<<<<<< HEAD
       // Update store with chips at table
       setChipsAtTable(wager, selectedToken)
-=======
-      // Update store with tokens in play and chips at table
-      setTokensInPlay(wager, selectedToken)
-      setChipsAtTable(wager) // Store the checked-in amount
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
       setLastWager(wager)
 
       // Show success alert

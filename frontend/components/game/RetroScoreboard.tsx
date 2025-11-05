@@ -4,17 +4,17 @@ import '@/styles/scoreboard.css'
 interface RetroScoreboardProps {
   trueCount: number
   shoePct: number
-  playerWinnings: number
-  playerLosses: number
-  dealerWins: number
+  playerWinnings?: number
+  playerLosses?: number
+  dealerWins?: number
 }
 
 export default function RetroScoreboard({
   trueCount,
   shoePct,
-  playerWinnings,
-  playerLosses,
-  dealerWins,
+  playerWinnings = 0,
+  playerLosses = 0,
+  dealerWins = 0,
 }: RetroScoreboardProps) {
   const netProfitLoss = playerWinnings - playerLosses
 

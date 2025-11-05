@@ -20,20 +20,12 @@ export default function GameActions() {
     chipsAtTable,
     tokenInPlay,
     handId,
-    handDealt,
-    dealerHand,
     playerHand,
     wager,
     cashOut,
     endHand,
     setGameState,
-<<<<<<< HEAD
-    resetHand,
-    updateChipsAfterHand
-=======
-    updateChipsAtTable,
-    resetHand
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
+    updateChipsAfterHand,
   } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -65,19 +57,10 @@ export default function GameActions() {
 
       // Check if hand is complete
       if (response.phase === 'COMPLETE') {
-        // Update chips based on outcome
         if (response.outcome && response.payout) {
           const payoutAmount = parseFloat(response.payout)
           updateChipsAfterHand(payoutAmount, response.outcome)
           toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
-          // Update chipsAtTable based on outcome
-          const payoutNum = parseFloat(response.payout || '0')
-          if (response.outcome === 'win') {
-            updateChipsAtTable(payoutNum) // Add payout to chips
-          } else if (response.outcome === 'lose') {
-            updateChipsAtTable(-wager) // Subtract wager from chips
-          }
-          // Push: no change to chips
         }
         endHand()
       }
@@ -108,19 +91,10 @@ export default function GameActions() {
         )
       }
 
-      // Update chips based on outcome
       if (response.outcome && response.payout) {
         const payoutAmount = parseFloat(response.payout)
         updateChipsAfterHand(payoutAmount, response.outcome)
         toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
-        // Update chipsAtTable based on outcome
-        const payoutNum = parseFloat(response.payout || '0')
-        if (response.outcome === 'win') {
-          updateChipsAtTable(payoutNum) // Add payout to chips
-        } else if (response.outcome === 'lose') {
-          updateChipsAtTable(-wager) // Subtract wager from chips
-        }
-        // Push: no change to chips
       }
 
       // End hand and show re-deal prompt
@@ -182,19 +156,10 @@ export default function GameActions() {
         )
       }
 
-      // Update chips and show outcome
       if (response.outcome && response.payout) {
         const payoutAmount = parseFloat(response.payout)
         updateChipsAfterHand(payoutAmount, response.outcome)
         toast.success(`${response.outcome.toUpperCase()}! Payout: ${response.payout}`)
-        // Update chipsAtTable based on outcome (double is 2x wager)
-        const payoutNum = parseFloat(response.payout || '0')
-        if (response.outcome === 'win') {
-          updateChipsAtTable(payoutNum) // Add payout to chips
-        } else if (response.outcome === 'lose') {
-          updateChipsAtTable(-wager * 2) // Subtract double wager from chips
-        }
-        // Push: no change to chips
       }
 
       // End hand after double (automatic stand)

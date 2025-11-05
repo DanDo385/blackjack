@@ -1,5 +1,5 @@
 import toast from 'react-hot-toast';
-import { showBetAgainPrompt } from '@/components/Toasts';
+import { showBetAgainPrompt } from '@/components/alerts/Toasts';
 
 // ============================================================================ 
 // Constants

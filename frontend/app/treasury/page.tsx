@@ -1,5 +1,5 @@
 'use client'
-import Navbar from '@/components/Navbar'
+import Navbar from '@/components/layout/Navbar'
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { useEffect, useState } from 'react'
 import { getTreasuryOverview } from '@/lib/api'

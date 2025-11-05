@@ -6,7 +6,7 @@ import { showTokensBroughtToTableAlert } from '@/lib/alerts'
 import { useStore } from '@/lib/store'
 import { postJSON } from '@/lib/api'
 import GameActions from './GameActions'
-import ReDealPrompt from './ReDealPrompt'
+import ReDealPrompt from '../alerts/ReDealPrompt'
 
 /**
  * BetControls Component
@@ -281,8 +281,8 @@ export default function BetControls({
         onDecline={handleDeclineReDeal}
       />
       <div className="space-y-4">
-      {/* Wager Controls Row */}
-      <div className="flex items-center gap-3 p-3 bg-neutral-900 border border-neutral-700 rounded-lg flex-wrap">
+        {/* Wager Controls Row */}
+        <div className="flex items-center gap-3 p-3 bg-neutral-900 border border-neutral-700 rounded-lg flex-wrap">
         <span className="text-sm text-neutral-400 font-medium">Wager</span>
 
         {/* Decrease button */}
@@ -346,79 +346,79 @@ export default function BetControls({
         >
           {isLoading ? 'Processing…' : 'Bring to Table'}
         </button>
-      </div>
-
-      {/* Wallet Status */}
-      {!isConnected ? (
-        <div className="p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-sm text-amber-100">
-          ⚠️ Connect your wallet to place bets
         </div>
-      ) : (
-        <>
-          {/* Multi-token balance display */}
-          <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg text-sm space-y-2">
-            <div className="font-semibold text-neutral-300 mb-2">Your Balances</div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-neutral-400">ETH</span>
-                <span className="font-mono text-white">
-                  {(ethBalance ? parseFloat(ethBalance.value.toString()) / Math.pow(10, ethBalance.decimals) : 0).toFixed(4)} ETH
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">wETH</span>
-                <span className="font-mono text-white">
-                  {(wethBalance ? parseFloat(wethBalance.value.toString()) / Math.pow(10, wethBalance.decimals) : 0).toFixed(4)} wETH
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">wBTC</span>
-                <span className="font-mono text-white">
-                  {(wbtcBalance ? parseFloat(wbtcBalance.value.toString()) / Math.pow(10, wbtcBalance.decimals) : 0).toFixed(6)} wBTC
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">USDC</span>
-                <span className="font-mono text-white">
-                  {(usdcBalance ? parseFloat(usdcBalance.value.toString()) / Math.pow(10, usdcBalance.decimals) : 0).toFixed(2)} USDC
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">USDT</span>
-                <span className="font-mono text-white">
-                  {(usdtBalance ? parseFloat(usdtBalance.value.toString()) / Math.pow(10, usdtBalance.decimals) : 0).toFixed(2)} USDT
-                </span>
+
+        {/* Wallet Status */}
+        {!isConnected ? (
+          <div className="p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-sm text-amber-100">
+            ⚠️ Connect your wallet to place bets
+          </div>
+        ) : (
+          <>
+            {/* Multi-token balance display */}
+            <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg text-sm space-y-2">
+              <div className="font-semibold text-neutral-300 mb-2">Your Balances</div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">ETH</span>
+                  <span className="font-mono text-white">
+                    {(ethBalance ? parseFloat(ethBalance.value.toString()) / Math.pow(10, ethBalance.decimals) : 0).toFixed(4)} ETH
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">wETH</span>
+                  <span className="font-mono text-white">
+                    {(wethBalance ? parseFloat(wethBalance.value.toString()) / Math.pow(10, wethBalance.decimals) : 0).toFixed(4)} wETH
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">wBTC</span>
+                  <span className="font-mono text-white">
+                    {(wbtcBalance ? parseFloat(wbtcBalance.value.toString()) / Math.pow(10, wbtcBalance.decimals) : 0).toFixed(6)} wBTC
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">USDC</span>
+                  <span className="font-mono text-white">
+                    {(usdcBalance ? parseFloat(usdcBalance.value.toString()) / Math.pow(10, usdcBalance.decimals) : 0).toFixed(2)} USDC
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-400">USDT</span>
+                  <span className="font-mono text-white">
+                    {(usdtBalance ? parseFloat(usdtBalance.value.toString()) / Math.pow(10, usdtBalance.decimals) : 0).toFixed(2)} USDT
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Wager token selector and max bet info */}
-          <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg space-y-2">
-            <label className="text-sm font-medium text-white block">Wager Token</label>
-            <select
-              value={selectedToken}
-              onChange={(e) => setSelectedToken(e.target.value as TokenSymbol)}
-              className="w-full border border-neutral-600 bg-black text-white rounded-lg px-3 py-2 text-sm font-medium focus:border-neutral-400 transition"
-            >
-              {TOKENS.map((token) => (
-                <option key={token.symbol} value={token.symbol}>
-                  {token.symbol}
-                </option>
-              ))}
-            </select>
+            {/* Wager token selector and max bet info */}
+            <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-lg space-y-2">
+              <label className="text-sm font-medium text-white block">Wager Token</label>
+              <select
+                value={selectedToken}
+                onChange={(e) => setSelectedToken(e.target.value as TokenSymbol)}
+                className="w-full border border-neutral-600 bg-black text-white rounded-lg px-3 py-2 text-sm font-medium focus:border-neutral-400 transition"
+              >
+                {TOKENS.map((token) => (
+                  <option key={token.symbol} value={token.symbol}>
+                    {token.symbol}
+                  </option>
+                ))}
+              </select>
 
-            <div className="text-xs space-y-1 pt-2 border-t border-neutral-700">
-              <div className="flex justify-between text-neutral-400">
-                <span>Max per hand (5% cap)</span>
-                <span className="font-mono text-white">
-                  {maxBetByRules.bankrollMax.toFixed(6)} {selectedToken}
-                </span>
+              <div className="text-xs space-y-1 pt-2 border-t border-neutral-700">
+                <div className="flex justify-between text-neutral-400">
+                  <span>Max per hand (5% cap)</span>
+                  <span className="font-mono text-white">
+                    {maxBetByRules.bankrollMax.toFixed(6)} {selectedToken}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </div>
     </>
   )
 }
