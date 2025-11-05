@@ -1,5 +1,5 @@
-import Navbar from '@/components/Navbar'
-import { AlertBus } from '@/components/AlertBus'
+import Navbar from '@/components/layout/Navbar'
+import { AlertBus } from '@/components/alerts/AlertBus'
 import Image from 'next/image'
 import Link from 'next/link'
 

@@ -1,15 +1,10 @@
 'use client'
-import Navbar from '@/components/Navbar'
-import TableCanvas from '@/components/TableCanvas'
-import { AlertBus } from '@/components/AlertBus'
-import PlayBetControls from '@/components/PlayBetControls'
-import GameActions from '@/components/GameActions'
+import Navbar from '@/components/layout/Navbar'
+import TableCanvas from '@/components/game/TableCanvas'
+import { AlertBus } from '@/components/alerts/AlertBus'
+import PlayBetControls from '@/components/game/PlayBetControls'
+import GameActions from '@/components/game/GameActions'
 import { useStore } from '@/lib/store'
-<<<<<<< HEAD
-
-export default function Play(){
-  const { chipsAtTable, selectedToken } = useStore()
-=======
 import { useEffect } from 'react'
 
 export default function Play(){
@@ -29,7 +24,6 @@ export default function Play(){
       setWagerStep(10)
     }
   }, [wagerStep, setWagerStep])
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
 
   return (
     <>

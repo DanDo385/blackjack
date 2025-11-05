@@ -24,12 +24,7 @@ export default function PlayBetControls() {
   const {
     phase,
     phaseDetail,
-<<<<<<< HEAD
-=======
-    tokensInPlay,
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
     chipsAtTable,
-    gameActive,
     handDealt,
     wager,
     wagerStep,
@@ -44,7 +39,6 @@ export default function PlayBetControls() {
     setWagerStep,
     setLastWager,
     setGameState,
-    setChipsAtTable,
   } = useStore()
 
   // Check if Deal button should be visible based on phase
@@ -169,7 +163,6 @@ export default function PlayBetControls() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-<<<<<<< HEAD
       {/* Chips at Table Status */}
       <div className="p-4 bg-neutral-900 border border-neutral-700 rounded-xl">
         <div className="flex justify-between items-center">
@@ -187,9 +180,6 @@ export default function PlayBetControls() {
           </a>
         </div>
       </div>
-=======
-      {/* Tokens at Table Status - removed since chipsAtTable is shown at top of play page */}
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
 
       {/* Wager Control */}
       <div className="p-4 bg-neutral-900 border border-neutral-700 rounded-xl space-y-3">

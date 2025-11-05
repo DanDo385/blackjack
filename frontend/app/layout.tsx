@@ -1,5 +1,5 @@
 import '@/styles/globals.css'
-import { Providers } from '@/components/Providers'
+import { Providers } from '@/components/providers/Providers'
 import type { ReactNode } from 'react'
 
 export const metadata = {

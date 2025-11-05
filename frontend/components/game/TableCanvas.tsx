@@ -2,11 +2,11 @@
 import Image from 'next/image'
 import RetroScoreboard from './RetroScoreboard'
 import BetControls from './BetControls'
-import InsuranceModal from './InsuranceModal'
+import InsuranceModal from '../alerts/InsuranceModal'
 import { useStore } from '@/lib/store'
 import { useEffect, useState } from 'react'
 import { useGameOutcomes, useShuffleAlerts } from '@/lib/gameOutcomes'
-import { BetAgainHandler } from './BetAgainHandler'
+import { BetAgainHandler } from '../alerts/BetAgainHandler'
 import { shouldShowCards } from '@/lib/types'
 
 /**
