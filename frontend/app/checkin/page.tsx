@@ -13,7 +13,7 @@ import { showTokensBroughtToTableAlert } from '@/lib/alerts'
  *
  * Flow:
  * 1. Connect wallet
- * 2. Select token to wager
+ * 2. Select token to wager (ETH only for now)
  * 3. Set wager amount (5% bankroll cap enforced)
  * 4. "Bring to Table" button navigates to /play
  */
@@ -24,11 +24,12 @@ const WBTC_ADDRESS = '0x053ba9b206e4fb2d196a13f7b5b0a186c0469605' as const
 const USDT_ADDRESS = '0xfde4c96c1286fba3ac151be17a5c5f2db85cbe72' as const
 
 const TOKENS = [
-  { symbol: 'USDC', address: USDC_ADDRESS, decimals: 6 },
-  { symbol: 'ETH', address: undefined, decimals: 18 }, // Native
-  { symbol: 'wETH', address: WETH_ADDRESS, decimals: 18 },
-  { symbol: 'wBTC', address: WBTC_ADDRESS, decimals: 8 },
-  { symbol: 'USDT', address: USDT_ADDRESS, decimals: 6 },
+  { symbol: 'ETH', address: undefined, decimals: 18 }, // Native - only one allowed for now
+  // Future tokens (disabled for now)
+  // { symbol: 'USDC', address: USDC_ADDRESS, decimals: 6 },
+  // { symbol: 'wETH', address: WETH_ADDRESS, decimals: 18 },
+  // { symbol: 'wBTC', address: WBTC_ADDRESS, decimals: 8 },
+  // { symbol: 'USDT', address: USDT_ADDRESS, decimals: 6 },
 ] as const
 
 type TokenSymbol = typeof TOKENS[number]['symbol']
@@ -39,16 +40,12 @@ export default function CheckIn() {
   const router = useRouter()
   const { address, isConnected } = useAccount()
   const [mounted, setMounted] = useState(false)
-  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('USDC')
+  const [selectedToken, setSelectedToken] = useState<TokenSymbol>('ETH')
   const [wager, setWager] = useState(0)
   const [wagerStep, setWagerStep] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
 
-<<<<<<< HEAD
   const { setChipsAtTable, setLastWager, setGameState } = useStore()
-=======
-  const { setTokensInPlay, setLastWager, setChipsAtTable, setGameState } = useStore()
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -120,14 +117,8 @@ export default function CheckIn() {
     setIsLoading(true)
 
     try {
-<<<<<<< HEAD
       // Update store with chips at table
       setChipsAtTable(wager, selectedToken)
-=======
-      // Update store with tokens in play and chips at table
-      setTokensInPlay(wager, selectedToken)
-      setChipsAtTable(wager) // Store the checked-in amount
->>>>>>> b0577a3 (making changes on multiple fronts and lost the head of the repo)
       setLastWager(wager)
 
       // Show success alert
