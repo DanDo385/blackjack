@@ -19,7 +19,7 @@ interface ITable {
   event Reshuffle(uint256 indexed shoeId);
 
   function placeBet(address token, uint256 amount, uint256 usdcRef, bytes32 quoteId) external returns (uint256 handId);
-  function settle(uint256 handId) external;
+  function settle(uint256 handId, uint256 cardsDealtInHand) external;
 }
 
 

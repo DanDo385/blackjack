@@ -14,7 +14,7 @@ export function useGameOutcomes() {
   const { address } = useAccount()
   const lastHandIdRef = useRef<number | null>(null)
   const lastCashOutRef = useRef<string | null>(null)
-  const { lastBet } = useStore()
+  const { lastBet, wager, updateChipsAtTable } = useStore()
 
   // Check for game outcomes by polling or listening to events
   useEffect(() => {
@@ -52,6 +52,8 @@ export function useGameOutcomes() {
             }
 
             if (result === 'win') {
+              // Update chipsAtTable with payout
+              updateChipsAtTable(payout)
               showWinAlert(
                 {
                   amount: payout,
@@ -62,6 +64,8 @@ export function useGameOutcomes() {
                 handleBetAgain
               )
             } else if (result === 'loss') {
+              // Update chipsAtTable by subtracting wager
+              updateChipsAtTable(-(lastBet || amount || wager))
               showLossAlert(
                 {
                   amount,
@@ -118,7 +122,7 @@ export function useGameOutcomes() {
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [address, lastBet])
+  }, [address, lastBet, wager, updateChipsAtTable])
 }
 
 /**

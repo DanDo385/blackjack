@@ -113,16 +113,13 @@ fi
 
 echo "✓ Table deployed at $TABLE_ADDR"
 
-# For now, use the same table for both standard and premium
-STD_TABLE_ADDR="$TABLE_ADDR"
-PREM_TABLE_ADDR="$TABLE_ADDR"
+# Single table only
 
 echo "Updating frontend contract addresses..."
 cat > "$ROOT_DIR/frontend/lib/contracts.ts" <<CONTRACTS_EOF
 export const addresses = {
   factory: '$FACTORY_ADDR',
-  tableStd: '$STD_TABLE_ADDR',
-  tablePrem: '$PREM_TABLE_ADDR',
+  table: '$TABLE_ADDR',
   treasury: '$TREASURY_ADDR',
 } as const
 
@@ -170,8 +167,7 @@ printf '  %-25s %s\n' "Next.js" "http://localhost:3000"
 echo
 
 echo "Factory:      $FACTORY_ADDR"
-echo "Std Table:    $STD_TABLE_ADDR"
-echo "Premier Table: $PREM_TABLE_ADDR"
+echo "Table:        $TABLE_ADDR"
 echo
 
 echo "Press Ctrl+C to stop all services."

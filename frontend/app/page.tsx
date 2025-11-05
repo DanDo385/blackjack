@@ -15,7 +15,7 @@ export default function Home(){
             <div className="p-6 text-white">
               <h1 className="text-3xl font-bold">YOLO Blackjack</h1>
               <p className="opacity-85">Club chaos × casino precision. Provably fair. Multicoin. Static rules.</p>
-              <Link href="/play" className="inline-block mt-3 px-4 py-2 rounded-xl bg-white text-black">Enter Table</Link>
+              <Link href="/checkin" className="inline-block mt-3 px-4 py-2 rounded-xl bg-white text-black">Check In</Link>
             </div>
           </div>
         </div>

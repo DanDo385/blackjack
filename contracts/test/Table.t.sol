@@ -197,7 +197,7 @@ contract TableTest is Test {
         // Fulfill VRF and settle to set anchor
         uint256 requestId = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId, address(table));
-        table.settle(0);
+        table.settle(0, 4); // 2 player + 2 dealer cards
 
         // After anchor is set, min bet should be anchor / spreadNum
         uint256 expectedMin = TestHelpers.calculateMinBet(anchor, table.spreadNum(), table.tableMin());
@@ -224,7 +224,7 @@ contract TableTest is Test {
         table.placeBet(address(token), lastBet, lastBet, bytes32(0));
         uint256 requestId = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId, address(table));
-        table.settle(0);
+        table.settle(0, 4); // 2 player + 2 dealer cards
 
         // Try to bet more than growth cap allows
         uint256 desired = 200e6; // 100% increase
@@ -246,7 +246,7 @@ contract TableTest is Test {
         table.placeBet(address(token), lastBet, lastBet, bytes32(0));
         uint256 requestId = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId, address(table));
-        table.settle(0);
+        table.settle(0, 4); // 2 player + 2 dealer cards
 
         uint256 maxAllowed = lastBet * (10000 + table.growthCapBps()) / 10000;
         assertEq(maxAllowed, 133e6); // 100e6 * 1.33 = 133e6
@@ -309,7 +309,7 @@ contract TableTest is Test {
         vm.expectEmit(true, true, false, true);
         emit HandSettled(handId, player, -int256(betAmount), address(token), 0, 0, 5);
 
-        table.settle(handId);
+        table.settle(handId, 4); // 2 player + 2 dealer cards
 
         Table.Hand memory hand = table.hands(handId);
         assertTrue(hand.settled);
@@ -322,7 +322,7 @@ contract TableTest is Test {
         uint256 handId = table.placeBet(address(token), betAmount, betAmount, bytes32(0));
         uint256 requestId = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId, address(table));
-        table.settle(handId);
+        table.settle(handId, 4); // 2 player + 2 dealer cards
 
         Table.PState memory state = table.pstate(player);
         assertEq(state.lastBet, betAmount);
@@ -338,7 +338,7 @@ contract TableTest is Test {
         vrfCoordinator.fulfillRandomWords(requestId, address(table));
 
         uint256 cardsBefore = table.cardsDealt();
-        table.settle(handId);
+        table.settle(handId, 4); // 2 player + 2 dealer cards
         assertEq(table.cardsDealt(), cardsBefore + 4);
     }
 
@@ -356,7 +356,7 @@ contract TableTest is Test {
             uint256 handId = table.placeBet(address(token), betAmount, betAmount, bytes32(0));
             uint256 requestId = vrfCoordinator.requestCounter() - 1;
             vrfCoordinator.fulfillRandomWords(requestId, address(table));
-            table.settle(handId);
+            table.settle(handId, 4); // 2 player + 2 dealer cards
         }
 
         // One more hand should trigger reshuffle
@@ -368,7 +368,9 @@ contract TableTest is Test {
         vm.expectEmit(true, false, false, true);
         emit Reshuffle(shoeIdBefore + 1);
 
-        table.settle(finalHandId);
+        // Calculate cards needed to trigger reshuffle (remaining cards to reach threshold)
+        uint256 cardsNeeded = table.reshuffleAt() - table.cardsDealt();
+        table.settle(finalHandId, cardsNeeded);
 
         assertEq(table.shoeId(), shoeIdBefore + 1);
         assertEq(table.cardsDealt(), 0);
@@ -381,7 +383,7 @@ contract TableTest is Test {
         uint256 handId = table.placeBet(address(token), betAmount, betAmount, bytes32(0));
 
         vm.expectRevert("not ready");
-        table.settle(handId);
+        table.settle(handId, 4); // 2 player + 2 dealer cards
     }
 
     function test_RevertWhen_SettleTwice() public {
@@ -391,10 +393,10 @@ contract TableTest is Test {
         uint256 handId = table.placeBet(address(token), betAmount, betAmount, bytes32(0));
         uint256 requestId = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId, address(table));
-        table.settle(handId);
+        table.settle(handId, 4); // 2 player + 2 dealer cards
 
         vm.expectRevert("settled");
-        table.settle(handId);
+        table.settle(handId, 4); // 2 player + 2 dealer cards
     }
 
     // ============ Multiple Players Tests ============
@@ -427,7 +429,7 @@ contract TableTest is Test {
         uint256 requestId1 = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId1, address(table));
         vm.prank(player);
-        table.settle(handId1);
+        table.settle(handId1, 4); // 2 player + 2 dealer cards
 
         token.approve(address(table), betAmount2);
         vm.prank(player2);
@@ -435,7 +437,7 @@ contract TableTest is Test {
         uint256 requestId2 = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId2, address(table));
         vm.prank(player2);
-        table.settle(handId2);
+        table.settle(handId2, 4); // 2 player + 2 dealer cards
 
         assertEq(table.pstate(player).anchor, betAmount1);
         assertEq(table.pstate(player2).anchor, betAmount2);
@@ -461,7 +463,7 @@ contract TableTest is Test {
         uint256 handId = table.placeBet(address(token), anchor, anchor, bytes32(0));
         uint256 requestId = vrfCoordinator.requestCounter() - 1;
         vrfCoordinator.fulfillRandomWords(requestId, address(table));
-        table.settle(handId);
+        table.settle(handId, 4); // 2 player + 2 dealer cards
 
         // Test that we can place bets within bounds
         uint256 expectedMin = TestHelpers.calculateMinBet(anchor, table.spreadNum(), table.tableMin());

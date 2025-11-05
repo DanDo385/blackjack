@@ -74,8 +74,10 @@ func (tc *TableContract) PlaceBet(ctx context.Context, tokenAddr common.Address,
 }
 
 // Settle calls settle on the Table contract
-func (tc *TableContract) Settle(ctx context.Context, handId *big.Int) error {
+// cardsDealtInHand is the number of cards dealt/revealed in this hand
+func (tc *TableContract) Settle(ctx context.Context, handId *big.Int, cardsDealtInHand *big.Int) error {
 	// Note: This requires contract ABI bindings
+	// The settle function now requires cardsDealtInHand parameter to track actual cards dealt/revealed
 	return fmt.Errorf("Settle requires contract ABI bindings - generate with abigen")
 }
 

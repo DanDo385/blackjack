@@ -142,7 +142,7 @@ contract Table is ITable, VRFConsumerBaseV2 {
     emit RandomFulfilled(handId, seed);
   }
 
-  function settle(uint256 handId) external {
+  function settle(uint256 handId, uint256 cardsDealtInHand) external {
     Hand storage h = hands[handId];
     require(!h.settled, "settled");
     require(h.seed!=bytes32(0), "not ready");
@@ -163,8 +163,14 @@ contract Table is ITable, VRFConsumerBaseV2 {
     s.lastBet = h.amount;
     if (s.anchor == 0) s.anchor = h.amount;
 
-    cardsDealt += 4; // minimal progress
-    if (cardsDealt >= reshuffleAt) { shoeId++; cardsDealt = 0; emit Reshuffle(shoeId); }
+    // Track actual cards dealt/revealed in this hand
+    // Reshuffle when 67% or more of cards have been dealt out/revealed
+    cardsDealt += cardsDealtInHand;
+    if (cardsDealt >= reshuffleAt) { 
+      shoeId++; 
+      cardsDealt = 0; 
+      emit Reshuffle(shoeId); 
+    }
 
     emit HandSettled(handId, h.player, playerWin?int256(h.amount): -int256(h.amount), h.token, payout, feeLink, feeNickelRef);
   }
