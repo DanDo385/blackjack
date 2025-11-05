@@ -5,7 +5,6 @@ import InsuranceModal from './InsuranceModal'
 import { useStore } from '@/lib/store'
 import { useMemo } from 'react'
 import { useGameOutcomes, useShuffleAlerts } from '@/lib/gameOutcomes'
-import { BetAgainHandler } from './BetAgainHandler'
 import { shouldShowCards } from '@/lib/types'
 
 /**
@@ -53,16 +52,9 @@ export default function TableCanvas() {
     return order >= 0 ? order * 333 : 0
   }
 
-  const handleDeal = () => {
-    // This would trigger the deal action - for now just a placeholder
-    // In real implementation, this would call the backend to start a new hand
-    console.log('Deal button triggered')
-  }
-
   return (
     <div className="max-w-6xl mx-auto">
       <InsuranceModal />
-      <BetAgainHandler onDeal={handleDeal} />
       <RetroScoreboard
         trueCount={trueCount}
         shoePct={shoePct}
