@@ -30,4 +30,3 @@ export function AlertBus() {
 
   return <Toaster position="top-right" />
 }
-

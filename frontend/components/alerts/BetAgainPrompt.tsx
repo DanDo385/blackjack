@@ -44,4 +44,3 @@ export function BetAgainPrompt({ toastId, message, onConfirm, onCancel }: BetAga
     )
   )
 }
-

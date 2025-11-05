@@ -1,7 +1,7 @@
 'use client'
 import Navbar from '@/components/Navbar'
 import TableCanvas from '@/components/TableCanvas'
-import { AlertBus } from '@/components/AlertBus'
+import { AlertBus } from '@/components/alerts/AlertBus'
 import PlayBetControls from '@/components/PlayBetControls'
 
 export default function Play(){

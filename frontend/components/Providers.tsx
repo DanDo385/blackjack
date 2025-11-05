@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { wagmiConfig } from '@/lib/wagmi'
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
-import { Toaster } from 'react-hot-toast'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
 import '@rainbow-me/rainbowkit/styles.css'
@@ -15,8 +14,8 @@ import '@rainbow-me/rainbowkit/styles.css'
  * - Wagmi (wallet connection)
  * - RainbowKit (wallet UI)
  * - React Query (API caching)
- * - React Hot Toast (notifications)
  *
+ * Note: Toast notifications are handled by AlertBus component in each page
  * Also initializes game state on mount (clears stale localStorage)
  */
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -46,7 +45,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={qc}>
         <RainbowKitProvider>
           {children}
-          <Toaster position="top-right" />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

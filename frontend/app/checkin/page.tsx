@@ -1,6 +1,6 @@
 'use client'
 import Navbar from '@/components/Navbar'
-import { AlertBus } from '@/components/AlertBus'
+import { AlertBus } from '@/components/alerts/AlertBus'
 import { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { useAccount, useBalance } from 'wagmi'
